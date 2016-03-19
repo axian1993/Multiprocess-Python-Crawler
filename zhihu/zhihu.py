@@ -345,14 +345,16 @@ class User:
             raise Exception("无权限(403)")
         if proxy != None:
             self.requests.proxies = {
-                'http': 'http://' + proxy
+                'https': 'http://' + proxy
                 #'https': 'http://' + proxy
             }
         header = {
             'User-Agent': "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:34.0) Gecko/20100101 Firefox/34.0",
             'Host': "www.zhihu.com"
         }
-        r = self.requests.get(self.user_url, headers = header)
+
+        r = self.requests.get(self.user_url, headers = header, timeout = 30.0)
+        print(r)
         soup = BeautifulSoup(r.content)
         self.soup = soup
 
@@ -769,6 +771,7 @@ class User:
                     yield record
                     timestamp = eval(record)['timestamp']
 
+            retry_max = 5
             while True:
                 _xsrf = soup.find("input", attrs={'name': '_xsrf'})['value']
                 data = {
@@ -784,7 +787,18 @@ class User:
                 #print(header)
 
                 post_url = self.user_url + '/activities'
-                r_post = self.requests.post(post_url, data = data, headers = header)
+                r_post = self.requests.post(post_url, data = data, headers = header, timeout = 30.0)
+
+                while r_post == None:
+                    print("response None happened")
+
+                    if retry_max == 0:
+                        raise ConnectionError
+
+                    time.sleep(5)
+                    r_post = self.requests.post(post_url, data = data, headers = header, timeout = 30.0)
+                    retry_max -= 1
+
                 if r_post.json()["msg"][0] == 0:
                     break
 
@@ -795,6 +809,8 @@ class User:
                     record = yield_activeity(activity)
                     yield record
                     timestamp = eval(record)['timestamp']
+
+                time.sleep(0.1)
 
 
 
