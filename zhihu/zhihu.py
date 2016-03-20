@@ -352,10 +352,14 @@ class User:
             'User-Agent': "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:34.0) Gecko/20100101 Firefox/34.0",
             'Host': "www.zhihu.com"
         }
-
-        r = self.requests.get(self.user_url, headers = header, timeout = 30.0)
-        print(r)
-        soup = BeautifulSoup(r.content)
+	max_retry = 10
+        r = self.requests.get(self.user_url, headers = header, timeout = 60.0)
+        while r.status_code != 200:
+		if retry == 0:
+			raise requests.exceptions.ConnectionError("can't get user's homepage")
+		r = self.requests.get(self.user_url, headers = header, timeout = 60.0)
+		max_retry -= 1
+        soup = BeautifulSoup(r.content, 'html.parser')
         self.soup = soup
 
     def get_user_id(self):
@@ -789,20 +793,18 @@ class User:
                 post_url = self.user_url + '/activities'
                 r_post = self.requests.post(post_url, data = data, headers = header, timeout = 30.0)
 
-                while r_post == None:
-                    print("response None happened")
-
+                while r_post.status_code != 200:
                     if retry_max == 0:
-                        raise ConnectionError
+                        raise requests.exceptions.ConnectionError("post for user activities failed")
 
                     time.sleep(5)
-                    r_post = self.requests.post(post_url, data = data, headers = header, timeout = 30.0)
+                    r_post = self.requests.post(post_url, data = data, headers = header, timeout = 60.0)
                     retry_max -= 1
 
                 if r_post.json()["msg"][0] == 0:
                     break
 
-                activity_soup = BeautifulSoup(r_post.json()["msg"][1])
+                activity_soup = BeautifulSoup(r_post.json()["msg"][1], 'html.parser')
                 activities = activity_soup.find_all("div", class_ = "zm-profile-section-item zm-item clearfix")
 
                 for activity in activities:

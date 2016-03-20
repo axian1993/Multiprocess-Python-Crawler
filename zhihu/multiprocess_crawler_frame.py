@@ -29,9 +29,9 @@ def get_proxies():
     request = requests.Session()
 
     proxies = []
-    current_page = 0
+    current_page = 1
 
-    while current_page < number_of_pages:
+    while current_page <= number_of_pages:
         url = free_proxy_site_url + str(current_page)
         try:
             r = request.get(url)
@@ -46,11 +46,11 @@ def get_proxies():
                     proxies.append(proxy)
 
         except requests.exceptions.ConnectionError:
-            print("connection error while getting proxy in page" + str(current_page + 1))
+            print("connection error while getting proxy in page" + str(current_page))
             time.sleep(3)
 
         except:
-            print("other error while getting proxy in page" + str(current_page + 1))
+            print("other error while getting proxy in page" + str(current_page))
             info = sys.exc_info()
             print(str(info[0]) + ':' + str(info[1]))
             current_page += 1
@@ -211,12 +211,12 @@ if __name__ == "__main__":
     writer_process = multiprocessing.Process(target = writer)
     writer_process.start()
 
-    source_path = "data/users_test"
+    source_path = "data/available_users"
     users = get_user_id(source_path)
 
     start = time.time()
 
-    pool = multiprocessing.Pool(32)
+    pool = multiprocessing.Pool(10)
     for user in users:
         pool.apply_async(crawler, (user,))
 
