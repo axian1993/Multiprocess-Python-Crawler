@@ -334,7 +334,7 @@ class User:
             if user_id != None:
                 self.user_id = user_id
 
-    def parser(self, proxy = None):
+    def parser(self, proxy = None, user_agent = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:34.0) Gecko/20100101 Firefox/34.0"):
         self.requests = requests.Session()
         self.requests.cookies = http.cookiejar.LWPCookieJar('cookies')
         try:
@@ -349,16 +349,28 @@ class User:
                 #'https': 'http://' + proxy
             }
         header = {
-            'User-Agent': "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:34.0) Gecko/20100101 Firefox/34.0",
+            'User-Agent': user_agent,
             'Host': "www.zhihu.com"
         }
-	max_retry = 10
-        r = self.requests.get(self.user_url, headers = header, timeout = 60.0)
-        while r.status_code != 200:
-		if retry == 0:
-			raise requests.exceptions.ConnectionError("can't get user's homepage")
-		r = self.requests.get(self.user_url, headers = header, timeout = 60.0)
-		max_retry -= 1
+
+        try:
+            r = self.requests.get(self.user_url, headers = header, timeout = 60.0)
+
+            max_retry = 5
+            while r.content == None:
+                if max_retry == 0:
+                    raise ConnectionError("content of response always be None")
+                print("failed to get user's homepage, response_code:" + r.status_code + "\ntrying again.......")
+
+                time.sleep(1)
+                r = self.requests.get(self.user_url, headers = header, timeout = 60.0)
+                max_retry -= 1
+
+        except:
+            info = sys.exc_info()
+            print(str(info[0]) + ":" + str(info[1]))
+            raise ConnectionError("something wrong with proxy or ....")
+
         soup = BeautifulSoup(r.content, 'html.parser')
         self.soup = soup
 
@@ -719,7 +731,7 @@ class User:
             yield
 
     # 获取用户动态 code by axian
-    def get_activities(self, proxy = None):
+    def get_activities(self, proxy = None, user_agent = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:34.0) Gecko/20100101 Firefox/34.0"):
         if self.user_url == None:
             print("can't get anonymous user's activities")
             return
@@ -775,7 +787,6 @@ class User:
                     yield record
                     timestamp = eval(record)['timestamp']
 
-            retry_max = 5
             while True:
                 _xsrf = soup.find("input", attrs={'name': '_xsrf'})['value']
                 data = {
@@ -784,28 +795,42 @@ class User:
                 }
                 #print(data)
                 header = {
-                    'User-Agent': "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:34.0) Gecko/20100101 Firefox/34.0",
+                    'User-Agent': user_agent,
                     'Host': "www.zhihu.com",
                     'Referer': self.user_url
                 }
                 #print(header)
 
                 post_url = self.user_url + '/activities'
-                r_post = self.requests.post(post_url, data = data, headers = header, timeout = 30.0)
-
-                while r_post.status_code != 200:
-                    if retry_max == 0:
-                        raise requests.exceptions.ConnectionError("post for user activities failed")
-
-                    time.sleep(5)
+                try:
                     r_post = self.requests.post(post_url, data = data, headers = header, timeout = 60.0)
-                    retry_max -= 1
 
-                if r_post.json()["msg"][0] == 0:
-                    break
+                    retry_max = 5
+                    while r_post.content == None:
+                        if retry_max == 0:
+                            raise requests.exceptions.ConnectionError("post for user activities failed,response code = " + r_post.status_code)
 
-                activity_soup = BeautifulSoup(r_post.json()["msg"][1], 'html.parser')
-                activities = activity_soup.find_all("div", class_ = "zm-profile-section-item zm-item clearfix")
+                        time.sleep(3)
+                        r_post = self.requests.post(post_url, data = data, headers = header, timeout = 60.0)
+                        retry_max -= 1
+
+                    if r_post.json()["msg"][0] == 0:
+                        break
+
+                    activity_soup = BeautifulSoup(r_post.json()["msg"][1], 'html.parser')
+                    activities = activity_soup.find_all("div", class_ = "zm-profile-section-item zm-item clearfix")
+
+                except:
+                    print(r_post)
+                    print(r_post.json())
+                    info = sys.exc_info()
+                    if str(info[1]) == "('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))":
+                        self.parser(proxy)
+                        soup = self.soup
+                        continue
+                    else:
+                        print(str(info[0]) + ":" + str(info[1]))
+                        raise ConnectionError("something wrong with proxy or ....")
 
                 for activity in activities:
                     record = yield_activeity(activity)
