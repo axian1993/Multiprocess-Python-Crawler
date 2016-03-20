@@ -261,7 +261,8 @@ def crawler(user_info):
         pass_to_writer(user_info)
 
         print(url + ": other error happened")
-        print(e)
+        traceback.print_exc()
+        #print(e)
 
 #多进程爬虫框架
 def multiprocessing_crawler_frame():
