@@ -262,7 +262,10 @@ def crawler(user_info):
 
         print(url + ": other error happened")
         traceback.print_exc()
+<<<<<<< HEAD
         #print(e)
+=======
+>>>>>>> a6112215125449c29f8fe5990120d23b6ef4272c
 
 #多进程爬虫框架
 def multiprocessing_crawler_frame():
