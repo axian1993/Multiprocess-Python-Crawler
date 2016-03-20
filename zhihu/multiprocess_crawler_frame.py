@@ -52,7 +52,7 @@ def get_proxies():
         except:
             print("other error while getting proxy in page" + str(current_page + 1))
             info = sys.exc_info()
-            print(info[0] + ":" + info[1])
+            print(str(info[0]) + ':' + str(info[1]))
             current_page += 1
 
         else:
@@ -196,7 +196,7 @@ def crawler(user_info):
 
     except Exception as e:
         info = sys.exc_info()
-        user_info['error'] = info[0] + ":" + info[1]
+        user_info['error'] = str(info[0]) + ':' + str(info[1])
         pass_to_writer(user_info)
 
         print("other error")
@@ -216,7 +216,7 @@ if __name__ == "__main__":
 
     start = time.time()
 
-    pool = multiprocessing.Pool(2)
+    pool = multiprocessing.Pool(32)
     for user in users:
         pool.apply_async(crawler, (user,))
 
