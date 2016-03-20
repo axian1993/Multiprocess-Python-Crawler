@@ -37,7 +37,8 @@ proxy_apply_event = manager.Event()
 proxy_recycle_event = manager.Event()
 
 #爬虫与写入进程通信的队列
-proxy_queue = manager.Queue()
+with manager.Queue() as proxy_queue:
+    pass
 
 #代理操作锁
 proxy_lock = manager.Lock()
@@ -181,7 +182,8 @@ def proxies_maintain():
 write_event = manager.Event()
 
 #爬虫与写进程通信队列
-write_queue = manager.Queue()
+with manager.Queue() as write_queue:
+    pass
 
 #写进程锁
 write_lock = manager.Lock()
@@ -261,7 +263,7 @@ def crawler(user_info):
         pass_to_writer(user_info)
 
         print(url + ": other error happened")
-        print(e)
+        traceback.print_exc()
 
 #多进程爬虫框架
 def multiprocessing_crawler_frame():
