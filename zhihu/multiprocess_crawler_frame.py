@@ -2,7 +2,7 @@
 
 #Build-in / Std
 import threading, multiprocessing, time, traceback, sys
-import random
+import random, termcolor
 
 #Requirments
 from bs4 import BeautifulSoup
@@ -12,13 +12,13 @@ import requests
 from zhihu import User
 
 #免费代理网站url
-free_proxy_site_url = "http://www.ip84.com/gn/"
+free_proxy_site_url = "http://www.ip84.com/dlpn/"
 
 #单次爬取代理页数
-number_of_pages = 10
+number_of_pages = 1
 
 #并发爬虫进程数量
-number_of_multiprocessing = 16
+number_of_multiprocessing = 6
 
 #服务多进程的管理进程
 manager = multiprocessing.Manager() #
@@ -62,6 +62,13 @@ user_agent_pool = [
     "Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Win64; x64; Trident/5.0)"
 ]
 
+#爬取用户总数
+amount_of_users = manager.Value('i', 0)
+
+#已爬取用户数量
+amount_of_finished_users = manager.Value('i', 0)
+
+
 #爬取免费代理网站的代理地址
 def get_proxies():
     request = requests.Session()
@@ -85,12 +92,12 @@ def get_proxies():
                     proxies.append(proxy)
 
         except requests.exceptions.ConnectionError as e:
-            print("connection error while getting proxy in page" + str(current_page))
+            print(termcolor.colored("connection error while getting proxy in page: ", "yellow") + str(current_page))
             print(e)
             time.sleep(3)
 
         except Exception as e:
-            print("other error while getting proxy in page" + str(current_page))
+            print(termcolor.colored("other error while getting proxy in page", "yellow") + str(current_page))
             print(e)
             current_page += 1
 
@@ -215,7 +222,7 @@ def writer():
                 else:
                     error_users.write(str(info) + "\n")
             except:
-                print(info)
+                print("Exception happened while writing "  + info['id'])
                 traceback.print_exc()
 
 #获取需要爬取用户的id
@@ -235,55 +242,63 @@ def crawler(user_info):
     try:
         user = User(url)
 
-        proxy = proxy_apply()
+        proxy = 'None'
+        #proxy = proxy_apply()
         user_agent = random.choice(user_agent_pool)
-        activities = []
 
-        print("start crawl " + url + "\nproxy:" + proxy + '\n')
+        start_time = "beginning"
+        if len(user_info['activity']) != 0:
+            start_time = user_info['activity'][len(user_info['activity']) - 1]
+
+        print(termcolor.colored("start crawling ", "green") + termcolor.colored(url, "blue") + termcolor.colored("\nproxy:" + proxy + '    start from ' + start_time + '\n', "green"))
 
         #爬取知乎用户动态
-        for activity in user.get_activities(proxy, user_agent):
-            activities.append(eval(activity))
-        user_info['activity'] = activities
+        for activity in user.get_activities(proxy, user_agent, start_time):
+            user_info['activity'].append(activity)
 
         user_info['error'] = ''
+        #print(url + "finished crawling")
         pass_to_writer(user_info)
-        proxy_recycle(proxy)
-        print(url + 'finished\n')
+        #proxy_recycle(proxy)
+        amount_of_finished_users.value += 1
+        print(termcolor.colored(url + ' finished    ' + str(amount_of_finished_users.value) + "/" + str(amount_of_users.value) + "\n", "green"))
 
     except ConnectionError as e:
-        print(url + ": " + str(e))
-        print("changing the proxy.............\n")
+        print(termcolor.colored("Warning: "  + str(e), "yellow"))
+        print("Reconnecting for " + termcolor.colored(url, "blue") + "\n")
         crawler(user_info)
 
     except Exception as e:
         user_info['error'] = str(e)
         pass_to_writer(user_info)
 
-        print(url + ": other error happened")
+        print(termcolor.colored("Error: other error happened for ", "red") + termcolor.colored(url, "blue"))
         traceback.print_exc()
+        print('\n')
         #print(e)
 
 #多进程爬虫框架
 def multiprocessing_crawler_frame():
     #启动进程池管理进程
-    p = multiprocessing.Process(target = proxies_maintain)
-    p.start()
-    proxy_start_event.wait()
+    # p = multiprocessing.Process(target = proxies_maintain)
+    # p.start()
+    # proxy_start_event.wait()
 
     #启动写进程
     writer_process = multiprocessing.Process(target = writer)
     writer_process.start()
 
     #获取目标用户id
-    source_path = "data/available_users"
+    source_path = "data/users_server"
     users = get_user_id(source_path)
+    amount_of_users.value = len(users)
 
     start = time.time()
 
     #使用进程池管理多爬虫进程
     pool = multiprocessing.Pool(number_of_multiprocessing)
     for user in users:
+        user['activity'] = []
         pool.apply_async(crawler, (user,))
 
     pool.close()
@@ -297,7 +312,7 @@ def multiprocessing_crawler_frame():
     writer_process.join()
 
     #关闭代理管理进程
-    p.terminate()
+    #p.terminate()
 
     print("finished\ttime cost: " + str(end - start))
 
