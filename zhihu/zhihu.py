@@ -802,7 +802,7 @@ class User:
                 #print(self.user_url + "  " + str(start_time))
 
                 try:
-                    r_post = self.requests.post(post_url, data = data, headers = header)
+                    r_post = self.requests.post(post_url, data = data, headers = header, timeout = 60.0)
 
                 except:
                     info = sys.exc_info()

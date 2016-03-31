@@ -18,7 +18,7 @@ free_proxy_site_url = "http://www.ip84.com/dlpn/"
 number_of_pages = 1
 
 #并发爬虫进程数量
-number_of_multiprocessing = 6
+number_of_multiprocessing = 5
 
 #服务多进程的管理进程
 manager = multiprocessing.Manager() #
@@ -211,7 +211,7 @@ def pass_to_writer(info):
 
 #写进程
 def writer():
-    with open("data/users.json", 'w') as user, open("data/error_users.json", "w") as error_users:
+    with open("data/users.json", 'a') as user, open("data/error_users.json", "a") as error_users:
         while True:
             info = writer_get_info()
             try:
@@ -289,7 +289,7 @@ def multiprocessing_crawler_frame():
     writer_process.start()
 
     #获取目标用户id
-    source_path = "data/users_server"
+    source_path = "data/available_user_axian"
     users = get_user_id(source_path)
     amount_of_users.value = len(users)
 
