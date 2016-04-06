@@ -215,7 +215,7 @@ def pass_to_writer(info):
 
 #写进程
 def writer():
-    with open("data/users.json", 'a') as user, open("data/error_users.json", "a") as error_users:
+    with open("~/axian_data/weibo/users.json", 'a') as user, open("~/axian_data/weibo/error_users.json", "a") as error_users:
         while True:
             info = writer_get_info()
             try:
