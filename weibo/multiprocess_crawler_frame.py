@@ -1,7 +1,7 @@
 # -*- coding = utf-8 -*-
 
 #Build-in / Std
-import threading, multiprocessing, time, traceback, sys
+import threading, multiprocessing, time, traceback, sys, traceback
 import random, termcolor
 
 #Requirments
@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 import requests
 
 #module
-from zhihu import User
+from weibo import User
 
 #免费代理网站url
 free_proxy_site_url = "http://www.ip84.com/dlpn/"
@@ -67,6 +67,10 @@ amount_of_users = manager.Value('i', 0)
 
 #已爬取用户数量
 amount_of_finished_users = manager.Value('i', 0)
+
+#已爬取用户index列表
+finished_users = manager.list()
+finished_users.append([])
 
 
 #爬取免费代理网站的代理地址
@@ -221,6 +225,9 @@ def writer():
                     user.write(str(info) + "\n")
                 else:
                     error_users.write(str(info) + "\n")
+                finished = finished_users[0]
+                finished.append(info['index'])
+                finished_users[0] = finished
             except:
                 print("Exception happened while writing "  + info['id'])
                 traceback.print_exc()
@@ -237,46 +244,52 @@ def get_user_id(path):
 
 #爬虫进程
 def crawler(user_info):
-    url = "http://www.zhihu.com/people/" + user_info['id']
+    amount_of_finished_users.value += 1
+    if user_info['index'] not in finished_users[0]:
+        url = user_info['weibo_link']
 
-    try:
-        user = User(url)
+        try:
+            user = User(url)
 
-        proxy = 'None'
-        #proxy = proxy_apply()
-        user_agent = random.choice(user_agent_pool)
+            proxy = 'None'
+            #proxy = proxy_apply()
+            user_agent = random.choice(user_agent_pool)
 
-        start_time = "beginning"
-        if len(user_info['activity']) != 0:
-            start_time = user_info['activity'][len(user_info['activity']) - 1]
+            current_time = time.time()
+            timeArray = time.localtime(current_time)
+            form_time = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
+            print(termcolor.colored("start crawling ", "green") + termcolor.colored(url, "blue") + termcolor.colored("\nproxy:" + proxy + "    " + form_time + '\n', "green"))
 
-        print(termcolor.colored("start crawling ", "green") + termcolor.colored(url, "blue") + termcolor.colored("\nproxy:" + proxy + '    start from ' + start_time + '\n', "green"))
+            #爬取微博动态时间
+            user_info['activity'] = []
+            for activity in user.get_activities_timestamp(user_agent):
+                user_info['activity'].append(activity)
 
-        #爬取知乎用户动态
-        for activity in user.get_activities(proxy, user_agent, start_time):
-            user_info['activity'].append(activity)
+            user_info['error'] = ''
+            #print(url + "finished crawling")
+            del user_info['id']
+            pass_to_writer(user_info)
+            #proxy_recycle(proxy)
+            current_time = time.time()
+            timeArray = time.localtime(current_time)
+            form_time = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
+            print(termcolor.colored(url + ' finished    ' + str(amount_of_finished_users.value) + "/" + str(amount_of_users.value), "green"))
+            print(termcolor.colored(form_time + "\n", "green"))
 
-        user_info['error'] = ''
-        #print(url + "finished crawling")
-        pass_to_writer(user_info)
-        #proxy_recycle(proxy)
-        amount_of_finished_users.value += 1
-        print(termcolor.colored(url + ' finished    ' + str(amount_of_finished_users.value) + "/" + str(amount_of_users.value) + "\n", "green"))
+        except ConnectionError as e:
+            print(termcolor.colored("Warning: "  + str(e), "yellow"))
+            print("Reconnecting for " + termcolor.colored(url, "blue") + "\n")
+            crawler(user_info)
 
-    except ConnectionError as e:
-        print(termcolor.colored("Warning: "  + str(e), "yellow"))
-        print("Reconnecting for " + termcolor.colored(url, "blue") + "\n")
-        crawler(user_info)
+        except Exception as e:
+            user_info['error'] = str(e)
+            pass_to_writer(user_info)
 
-    except Exception as e:
-        user_info['error'] = str(e)
-        pass_to_writer(user_info)
-
-        traceback.print_exc()
-        print(termcolor.colored("Error: " + str(e), "red"))
-        print("skip " + termcolor.colored(url, "blue"))
-        print('\n')
-        #print(e)
+            traceback.print_exc()
+            print(termcolor.colored("Error: " + str(e), "red"))
+            print("skip " + termcolor.colored(url, "blue"))
+            print('\n')
+            #print(e)
 
 #多进程爬虫框架
 def multiprocessing_crawler_frame():
@@ -290,7 +303,7 @@ def multiprocessing_crawler_frame():
     writer_process.start()
 
     #获取目标用户id
-    source_path = "data/available_user_axian"
+    source_path = "data/available_users"
     users = get_user_id(source_path)
     amount_of_users.value = len(users)
 
@@ -298,12 +311,22 @@ def multiprocessing_crawler_frame():
 
     #使用进程池管理多爬虫进程
     pool = multiprocessing.Pool(number_of_multiprocessing)
-    for user in users:
-        user['activity'] = []
-        pool.apply_async(crawler, (user,))
 
-    pool.close()
-    pool.join()
+    try:
+        finished_input = open("data/finished_index", 'a+')
+        finished_input.seek(0)
+        line = finished_input.readline()
+        finished_users[0] = eval(line)['index']
+        for user in users:
+                pool.apply_async(crawler, (user,))
+
+        pool.close()
+        pool.join()
+    finally:
+        finished_input.truncate(0)
+        finished_input.write("{'index':" + str(finished_users[0]) + "}")
+        finished_input.close()
+
 
     end = time.time()
 

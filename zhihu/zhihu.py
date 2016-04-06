@@ -335,10 +335,11 @@ class User:
                 self.user_id = user_id
 
     def parser(self, proxy = None, user_agent = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:34.0) Gecko/20100101 Firefox/34.0"):
-        self.requests = requests.Session()
-        self.requests.cookies = http.cookiejar.LWPCookieJar('cookies')
+        requests = requests.Session()
+        requests.cookies = http.cookiejar.LWPCookieJar('cookies')
+        self.requests = requests
         try:
-            self.requests.cookies.load(ignore_discard=True)
+            requests.cookies.load(ignore_discard=True)
         except:
             Logging.error("你还没有登录知乎哦 ...")
             Logging.info("执行 `python auth.py` 即可以完成登录。")
@@ -354,11 +355,11 @@ class User:
         }
 
         try:
-            r = self.requests.get(self.user_url, headers = header, timeout = 30.0)
+            r = requests.get(self.user_url, headers = header, timeout = 30.0)
 
         except:
-            info = sys.exc_info()
-            print(str(info[0]) + ":" + str(info[1]))
+            # info = sys.exc_info()
+            # print(str(info[0]) + ":" + str(info[1]))
             raise ConnectionError("something wrong with network ...........")
 
         soup = BeautifulSoup(r.content, 'html.parser')
@@ -723,111 +724,110 @@ class User:
     # 获取用户动态 code by axian
     def get_activities(self, proxy = None, user_agent = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:34.0) Gecko/20100101 Firefox/34.0", start_time = "beginning"):
         if self.user_url == None:
-            print("can't get anonymous user's activities")
-            return
-        else:
-            if self.soup == None:
-                self.parser(proxy)
-            soup = self.soup
+            raise Exception("can't get anonymous user's activities")
+        if self.soup == None:
+            self.parser(proxy)
+        soup = self.soup
 
-            activities = soup.find_all("div", class_ = "zm-profile-section-item zm-item clearfix")
-            zhihu_url = 'http://www.zhihu.com'
+        activities = soup.find_all("div", class_ = "zm-profile-section-item zm-item clearfix")
 
-            def yield_activeity(activity):
-                timestamp = activity['data-time']
-                return timestamp
-                # _type = activity['data-type']
-                # type_detail = activity['data-type-detail']
-                #
-                # if _type == 'a':
-                #     answer_url = zhihu_url + activity.find("a", class_ = 'question_link')['href'] if activity.find("a", class_ = 'question_link') != None else ""
-                #     return json.dumps({'timestamp': timestamp, 'type': _type, 'type_detail': type_detail, 'answer_url': answer_url})
-                #
-                # elif _type == 'p':
-                #     post_url = zhihu_url + activity.find("a", class_ = 'post-link')['href'] if activity.find("a", class_ = 'post-link') != None else ""
-                #     return json.dumps({'timestamp': timestamp, 'type': _type, 'type_detail': type_detail, 'post_url': post_url})
-                #
-                # else:
-                #     if type_detail == 'member_ask_question' or type_detail == 'member_follow_question':
-                #         question_url = zhihu_url + activity.find("a", class_ = 'question_link')['href'] if activity.find("a", class_ = 'question_link') != None else ""
-                #         return json.dumps({'timestamp': timestamp, 'type': _type, 'type_detail': type_detail, 'question_url': question_url})
-                #
-                #     elif type_detail == 'member_follow_column':
-                #         column_url = activity.find("a", class_ = 'column_link')['href'] if activity.find("a", class_ = 'column_link') != None else ""
-                #         return json.dumps({'timestamp': timestamp, 'type': _type, 'type_detail': type_detail, 'column_url': column_url})
-                #
-                #     elif type_detail == 'member_follow_topic':
-                #         topic_url = zhihu_url + activity.find("a", class_ = 'topic-link')['href'] if activity.find("a", class_ = 'topic-link') != None else ""
-                #         return json.dumps({'timestamp': timestamp, 'type': _type, 'type_detail': type_detail, 'topic_url': topic_url})
-                #
-                #     elif type_detail == 'member_follow_favlist':
-                #         favlist_url = activity.a['href'] if activity.a != None else ""
-                #         return json.dumps({'timestamp': timestamp, 'type': _type, 'type_detail': type_detail, 'favlist_url': favlist_url})
-                #
-                #     elif type_detail == 'member_follow_roundtable':
-                #         roundtable_url = zhihu_url + activity.find("a", class_ = 'roundtable_link')['href'] if activity.find("a", class_ = 'roundtable_link') != None else ""
-                #         return json.dumps({'timestamp': timestamp, 'type': _type, 'type_detail': type_detail, 'roundtable_url': roundtable_url})
-                #
-                #     else:
-                #         print('发现未知类型动态 type: ' + _type + ' type_detal: ' + type_detail)
-                #         return json.dumps({'timestamp': timestamp, 'type': _type, 'type_detail': type_detail})
+        def yield_activeity(activity):
+            timestamp = activity['data-time']
+            return timestamp
+            # zhihu_url = 'http://www.zhihu.com'
+            # _type = activity['data-type']
+            # type_detail = activity['data-type-detail']
+            #
+            # if _type == 'a':
+            #     answer_url = zhihu_url + activity.find("a", class_ = 'question_link')['href'] if activity.find("a", class_ = 'question_link') != None else ""
+            #     return json.dumps({'timestamp': timestamp, 'type': _type, 'type_detail': type_detail, 'answer_url': answer_url})
+            #
+            # elif _type == 'p':
+            #     post_url = zhihu_url + activity.find("a", class_ = 'post-link')['href'] if activity.find("a", class_ = 'post-link') != None else ""
+            #     return json.dumps({'timestamp': timestamp, 'type': _type, 'type_detail': type_detail, 'post_url': post_url})
+            #
+            # else:
+            #     if type_detail == 'member_ask_question' or type_detail == 'member_follow_question':
+            #         question_url = zhihu_url + activity.find("a", class_ = 'question_link')['href'] if activity.find("a", class_ = 'question_link') != None else ""
+            #         return json.dumps({'timestamp': timestamp, 'type': _type, 'type_detail': type_detail, 'question_url': question_url})
+            #
+            #     elif type_detail == 'member_follow_column':
+            #         column_url = activity.find("a", class_ = 'column_link')['href'] if activity.find("a", class_ = 'column_link') != None else ""
+            #         return json.dumps({'timestamp': timestamp, 'type': _type, 'type_detail': type_detail, 'column_url': column_url})
+            #
+            #     elif type_detail == 'member_follow_topic':
+            #         topic_url = zhihu_url + activity.find("a", class_ = 'topic-link')['href'] if activity.find("a", class_ = 'topic-link') != None else ""
+            #         return json.dumps({'timestamp': timestamp, 'type': _type, 'type_detail': type_detail, 'topic_url': topic_url})
+            #
+            #     elif type_detail == 'member_follow_favlist':
+            #         favlist_url = activity.a['href'] if activity.a != None else ""
+            #         return json.dumps({'timestamp': timestamp, 'type': _type, 'type_detail': type_detail, 'favlist_url': favlist_url})
+            #
+            #     elif type_detail == 'member_follow_roundtable':
+            #         roundtable_url = zhihu_url + activity.find("a", class_ = 'roundtable_link')['href'] if activity.find("a", class_ = 'roundtable_link') != None else ""
+            #         return json.dumps({'timestamp': timestamp, 'type': _type, 'type_detail': type_detail, 'roundtable_url': roundtable_url})
+            #
+            #     else:
+            #         print('发现未知类型动态 type: ' + _type + ' type_detal: ' + type_detail)
+            #         return json.dumps({'timestamp': timestamp, 'type': _type, 'type_detail': type_detail})
 
 
-            while soup.find("input", attrs={'name': '_xsrf'}) == None:
-                raise ConnectionError("_xsrf is None")
+        while soup.find("input", attrs={'name': '_xsrf'}) == None:
+            raise ConnectionError("_xsrf is None")
 
-            _xsrf = soup.find("input", attrs={'name': '_xsrf'})["value"]
+        _xsrf = soup.find("input", attrs={'name': '_xsrf'})["value"]
 
-            if start_time == "beginning":
-                for activity in activities:
-                        record = yield_activeity(activity)
-                        yield record
-                        start_time = record
-
-            #print(data)
-            header = {
-                'User-Agent': user_agent,
-                'Host': "www.zhihu.com",
-                'Referer': self.user_url
-            }
-            #print(header)
-
-            post_url = self.user_url + '/activities'
-
-            while True:
-                data = {
-                    'start': start_time,
-                    '_xsrf': _xsrf
-                }
-                #print(self.user_url + "  " + str(start_time))
-
-                try:
-                    r_post = self.requests.post(post_url, data = data, headers = header, timeout = 60.0)
-
-                except:
-                    info = sys.exc_info()
-                    print(self.user_url + str(info[0]) + ":" + str(info[1]))
-                    raise ConnectionError("something wrong with network ........")
-
-                if r_post.status_code != 200:
-                    raise ConnectionError("Response" + str(r_post.status_code))
-
-                try:
-                    if r_post.json()["msg"][0] == 0:
-                        break
-                except:
-                    print(self.user_url + "something wrong with the content of response")
-                    continue
-
-                activity_soup = BeautifulSoup(eval(r_post.content.decode("utf-8"))["msg"][1], 'html.parser')
-                activities = activity_soup.find_all("div", class_ = "zm-profile-section-item zm-item clearfix")
-
-                for activity in activities:
+        if start_time == "beginning":
+            for activity in activities:
                     record = yield_activeity(activity)
                     yield record
                     start_time = record
 
-                time.sleep(0.1)
+        #print(data)
+        header = {
+            'User-Agent': user_agent,
+            'Host': "www.zhihu.com",
+            'Referer': self.user_url
+        }
+        #print(header)
+
+        post_url = self.user_url + '/activities'
+
+        while True:
+            data = {
+                'start': start_time,
+                '_xsrf': _xsrf
+            }
+            #print(self.user_url + "  " + str(start_time))
+
+            try:
+                r_post = self.requests.post(post_url, data = data, headers = header, timeout = 60.0)
+
+            except:
+                info = sys.exc_info()
+                print(self.user_url + str(info[0]) + ":" + str(info[1]))
+                raise ConnectionError("something wrong with network ........")
+
+            if r_post.status_code != 200:
+                raise ConnectionError("Response" + str(r_post.status_code))
+
+            try:
+                if r_post.json()["msg"][0] == 0:
+                    break
+            except:
+                print(self.user_url + "something wrong with the content of response")
+                continue
+
+            activity_soup = BeautifulSoup(eval(r_post.content.decode("utf-8"))["msg"][1], 'html.parser')
+            activities = activity_soup.find_all("div", class_ = "zm-profile-section-item zm-item clearfix")
+
+            for activity in activities:
+                record = yield_activeity(activity)
+                yield record
+                start_time = record
+
+            time.sleep(0.1)
+
 
 
 
