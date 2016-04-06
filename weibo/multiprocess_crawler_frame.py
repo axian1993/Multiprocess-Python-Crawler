@@ -244,7 +244,6 @@ def get_user_id(path):
 
 #爬虫进程
 def crawler(user_info):
-    amount_of_finished_users.value += 1
     if user_info['index'] not in finished_users[0]:
         url = user_info['weibo_link']
 
@@ -290,6 +289,7 @@ def crawler(user_info):
             print("skip " + termcolor.colored(url, "blue"))
             print('\n')
             #print(e)
+    amount_of_finished_users.value += 1
 
 #多进程爬虫框架
 def multiprocessing_crawler_frame():
