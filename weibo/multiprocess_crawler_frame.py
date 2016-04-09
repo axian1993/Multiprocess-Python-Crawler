@@ -66,7 +66,7 @@ user_agent_pool = [
 amount_of_users = manager.Value('i', 0)
 
 #已爬取用户数量
-amount_of_finished_users = manager.Value('i', 0)
+amount_of_finished_users = manager.Value('i', 1)
 
 #已爬取用户index列表
 finished_users = manager.list()
@@ -244,10 +244,9 @@ def get_user_id(path):
 
 #爬虫进程
 def crawler(user_info):
-    if user_info['index'] not in finished_users[0]:
-        url = user_info['weibo_link']
-
-        try:
+    try:
+        if user_info['index'] not in finished_users[0]:
+            url = user_info['weibo_link']
             user = User(url)
 
             proxy = 'None'
@@ -275,20 +274,20 @@ def crawler(user_info):
             print(termcolor.colored(url + ' finished    ' + str(amount_of_finished_users.value) + "/" + str(amount_of_users.value), "green"))
             print(termcolor.colored(form_time + "\n", "green"))
 
-        except ConnectionError as e:
-            print(termcolor.colored("Warning: "  + str(e), "yellow"))
-            print("Reconnecting for " + termcolor.colored(url, "blue") + "\n")
-            crawler(user_info)
+    except ConnectionError as e:
+        print(termcolor.colored("Warning: "  + str(e), "yellow"))
+        print("Reconnecting for " + termcolor.colored(url, "blue") + "\n")
+        crawler(user_info)
 
-        except Exception as e:
-            user_info['error'] = str(e)
-            pass_to_writer(user_info)
+    except Exception as e:
+        user_info['error'] = str(e)
+        pass_to_writer(user_info)
 
-            traceback.print_exc()
-            print(termcolor.colored("Error: " + str(e), "red"))
-            print("skip " + termcolor.colored(url, "blue"))
-            print('\n')
-            #print(e)
+        traceback.print_exc()
+        print(termcolor.colored("Error: " + str(e), "red"))
+        print("skip " + termcolor.colored(url, "blue"))
+        print('\n')
+        #print(e)
     amount_of_finished_users.value += 1
 
 #多进程爬虫框架
@@ -303,7 +302,7 @@ def multiprocessing_crawler_frame():
     writer_process.start()
 
     #获取目标用户id
-    source_path = "data/available_users"
+    source_path = "data/server_users"
     users = get_user_id(source_path)
     amount_of_users.value = len(users)
 
