@@ -66,7 +66,7 @@ user_agent_pool = [
 amount_of_users = manager.Value('i', 0)
 
 #已爬取用户数量
-amount_of_finished_users = manager.Value('i', 1)
+amount_of_finished_users = manager.Value('i', 0)
 
 #已爬取用户index列表
 finished_users = manager.list()
@@ -215,7 +215,7 @@ def pass_to_writer(info):
 
 #写进程
 def writer():
-    with open("/home/splab/axian_data/weibo/users.json", 'a') as user, open("/home/splab/axian_data/weibo/error_users.json", "a") as error_users:
+    with open("data/users.json", 'a') as user, open("data/error_users.json", "a") as error_users:
         while True:
             info = writer_get_info()
             try:
@@ -271,6 +271,7 @@ def crawler(user_info):
             current_time = time.time()
             timeArray = time.localtime(current_time)
             form_time = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
+            amount_of_finished_users.value += 1
             print(termcolor.colored(url + ' finished    ' + str(amount_of_finished_users.value) + "/" + str(amount_of_users.value), "green"))
             print(termcolor.colored(form_time + "\n", "green"))
 
@@ -288,7 +289,6 @@ def crawler(user_info):
         print("skip " + termcolor.colored(url, "blue"))
         print('\n')
         #print(e)
-    amount_of_finished_users.value += 1
 
 #多进程爬虫框架
 def multiprocessing_crawler_frame():
@@ -302,7 +302,7 @@ def multiprocessing_crawler_frame():
     writer_process.start()
 
     #获取目标用户id
-    source_path = "data/server_users"
+    source_path = "data/available_users"
     users = get_user_id(source_path)
     amount_of_users.value = len(users)
 

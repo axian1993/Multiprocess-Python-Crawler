@@ -19,7 +19,7 @@ import stamp
 #reload(sys)
 #sys.setdefaultencoding('utf8')
 
-cookie = {"Cookie": "SUHB=00xoqP1r_i1j5X; _T_WM=c2cde412ee853e53f855434d03bfccde; SUB=_2A256AdJkDeRxGeRJ6VEX8y3Izj6IHXVZDf4srDV6PUJbrdAKLUrikW1LHetLlg7l-QUFxtY0L9n1AwlCQenYdg..; gsid_CTandWM=4uU09e691C5m4vvKneonubqxz7i"}
+cookie = {"Cookie": "SUHB=00xoqP1r_i1j5X; _T_WM=c2cde412ee853e53f855434d03bfccde; M_WEIBOCN_PARAMS=luicode%3D20000174; SUB=_2A256CCGVDeTxGeRI41UZ8CfMzT6IHXVZ80_drDV6PUJbrdAKLWL2kW1LHes3ZqN2au7CrtI-0fMc7YcTt6gbmg..; gsid_CTandWM=4uxl9e691vPC5pcqlAleabhdL10"}
 
 class User:
     user_url = None
