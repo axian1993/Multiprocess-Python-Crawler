@@ -60,12 +60,17 @@ def non_dtw_distance(s,t,default=None,costf=None):
 
     return sum([costf(a,b) for a,b in zip(s,t)])
 
-def initialize_dmatrix(rows,cols):
+def initialize_dmatrix(rows,cols,window):
     d = np.zeros((rows,cols),dtype='float')
 
     d[:,0] = 1e6
     d[0,:] = 1e6
     d[0,0] = 0
+
+    for i in range(1,rows):
+        for j in range(1,cols):
+            if abs(i - j) > window:
+                d[i][j] = 1e6
 
     return d
 
@@ -169,42 +174,72 @@ def dtw_distance(list1, list2, costf=lambda x,y: la.norm(x - y) ):
 
     return dtw[n,m]
 
-def ddtw_distance(list1, list2, simf=lambda x,y: cosine(x,y)):
+# def ddtw_distance(list1, list2, simf=lambda x,y: cosine(x,y)):
+#
+#     list1 = derivative(list1)
+#     list2 = derivative(list2)
+#
+#     n = len(list1)
+#     m = len(list2)
+#     dtw = initialize_smatrix(n+1,m+1)
+#
+#     for (i,x) in enumerate(list1):
+#         i += 1
+#         for (j,y) in enumerate(list2):
+#             j += 1
+#
+#             sim = simf(x,y)
+#             if i == 1 and j == 1:
+#                 dtw[i,j] = 2 * sim + dtw[i-1][j-1]
+#             elif i == 1:
+#                 dtw[i,j] = dtw[i][j-1] + sim
+#             elif j == 1:
+#                 dtw[i,j] = dtw[i-1][j] + sim
+#             else:
+#                 dtw[i,j] = max(dtw[i-1][j-1] + 2 * sim, dtw[i-2][j-1] + 2 * simf(list1[i-2],list2[j-1]) + sim, dtw[i-1][j-2] + 2 * simf(list1[i-1],list2[j-2]) + sim)
+#
+#     return dtw[n,m]
 
-    list1 = derivative(list1)
-    list2 = derivative(list2)
+def ddtw_wdistance(list1, list2, w, symmetry = False, smooth = False, costf=lambda x,y: la.norm(x - y)):
+    if symmetry == True:
+        list1 = abs_list(list1)
+        list2 = abs_list(list2)
+
+    if smooth == False:
+        list1 = derivative(list1)
+        list2 = derivative(list2)
+    elif smooth == True:
+        list1 = smooth_derivative(list1)
+        list2 = smooth_derivative(list2)
 
     n = len(list1)
     m = len(list2)
-    dtw = initialize_smatrix(n+1,m+1)
+    dtw = initialize_dmatrix(n+1,m+1,w)
 
     for (i,x) in enumerate(list1):
-        i += 1
-        for (j,y) in enumerate(list2):
-            j += 1
-
-            sim = simf(x,y)
-            if i == 1 and j == 1:
-                dtw[i,j] = 2 * sim + dtw[i-1][j-1]
-            elif i == 1:
-                dtw[i,j] = dtw[i][j-1] + sim
-            elif j == 1:
-                dtw[i,j] = dtw[i-1][j] + sim
-            else:
-                dtw[i,j] = max(dtw[i-1][j-1] + 2 * sim, dtw[i-2][j-1] + 2 * simf(list1[i-2],list2[j-1]) + sim, dtw[i-1][j-2] + 2 * simf(list1[i-1],list2[j-2]) + sim)
+        i = i + 1
+        for j in range(max(0,i-w-1),min(m,i+w)):
+            y = list2[j]
+            j = j + 1
+            #print("(" + str(i) + "," + str(j) + ")")
+            cost = costf(x,y)
+            dtw[i,j] = cost + min(dtw[i-1,j],dtw[i,j-1],dtw[i-1][j-1])
 
     return dtw[n,m]
 
 
-def dtw_wdistance(list1, list2, w, costf=lambda x,y: la.norm(x - y)):
+def dtw_wdistance(list1, list2, w, symmetry = False, costf=lambda x,y: la.norm(x - y)):
+    if symmetry == True:
+        list1 = abs_list(list1)
+        list2 = abs_list(list2)
 
     n = len(list1)
     m = len(list2)
-    dtw = initialize_dmatrix(n+1,m+1)
+    dtw = initialize_dmatrix(n+1,m+1,w)
 
     for (i,x) in enumerate(list1):
         i = i + 1
-        for j in range(max(0,i-w-1),min(m,i+w-1)):
+        for j in range(max(0,i-w-1),min(m,i+w)):
             y = list2[j]
             j = j + 1
             #print("(" + str(i) + "," + str(j) + ")")
@@ -216,9 +251,26 @@ def dtw_wdistance(list1, list2, w, costf=lambda x,y: la.norm(x - y)):
 def derivative(list1):
     der_list = []
     for i in range(1, len(list1)):
-        der_list.append(list1[i] - list1[i - 1])
+        der = list1[i] - list1[i-1]
+        der_list.append(der)
 
     return der_list
+
+def smooth_derivative(list1):
+    der_list = []
+    for i in range(1, len(list1) - 1):
+        der = list1[i] - list1[i-1] + (list1[i+1] - list1[i-1]) / 2
+        der = der / 2
+        der_list.append(der)
+
+    return der_list
+
+def abs_list(list1):
+    for i in range(len(list1)):
+        list1[i] = abs(list1[i])
+
+    return list1
+
 
 def cosine(y1, y2, x = 3):
 
@@ -230,9 +282,9 @@ def cosine(y1, y2, x = 3):
     return cos_sim
 
 def main():
-    list1 = [1, 5, 8, 7]
-    list2 = [3, 2, 8, 4]
-    print(ddtw_distance(list1, list2))
+    list1 = [6,1, 5, 10, 5, 4, 9, 3]
+    list2 = [3, 2, 8, 4, 3, 6, 9, 1]
+    print(dtw_wdistance(list1, list2, 0, True))
 
 if __name__ == "__main__":
     main()

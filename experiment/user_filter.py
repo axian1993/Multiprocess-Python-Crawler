@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-def bhv_cnt_filter(cnt):
+def bhv_cnt_filter(cnt, path1, path2):
     z_index = []
     w_index = []
     common_index = {}
-    with open('data/zhihu/users_test.json') as z_user, open('data/weibo/users_test.json') as w_user:
+    with open(path1, 'r') as z_user, open(path2, 'r') as w_user:
         for line in z_user:
             line = eval(line)
             if len(line['activity']) >= 100:
