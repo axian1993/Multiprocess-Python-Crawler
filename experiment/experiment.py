@@ -18,9 +18,9 @@ from series_transfer import Stamps
 from user_filter import bhv_cnt_filter
 
 zhihu_path = 'data/zhihu/users.json'
-weibo_path = 'data/zhihu/users.json'
+weibo_path = 'data/weibo/users.json'
 
-def validation(alpha = 3600, betas = [24], bhv_cnt = 100, l_norm = 1.3, cv = 10 ):
+def validation(alpha = 86400, betas = [7], bhv_cnt = 100, l_norm = 1.3, cv = 10 ):
 
     user_dict = bhv_cnt_filter(bhv_cnt, zhihu_path, weibo_path)
 
@@ -77,8 +77,8 @@ def validation(alpha = 3600, betas = [24], bhv_cnt = 100, l_norm = 1.3, cv = 10 
                             # print(wbe)
                             print(interval_sim)
 
-                            plt.plot(range(beta),zbe, color = 'blue',label='zhihu')
-                            plt.plot(range(beta),wbe,color = 'red',label='weibo')
+                            plt.plot(range(beta),zbe, color = 'blue', label='zhihu')
+                            plt.plot(range(beta),wbe, color = 'red', label='weibo')
 
                             ax = plt.gca()
                             ax.spines['right'].set_color('none')
@@ -113,45 +113,37 @@ def validation(alpha = 3600, betas = [24], bhv_cnt = 100, l_norm = 1.3, cv = 10 
     # scores = cross_validation.cross_val_score(clf, sim, target, cv = cv)
     # return scores
 
-def cal_sim(list1, list2, betas, metric, window = 0, norm = 1.5, symmetry = False ,smooth = False):
+def cal_sim(list1, list2, beta, metric, window = 0, symmetry = False ,smooth = False):
 
     min_len = min(len(list1), len(list2))
 
-    beta_sim = []
-
     if metric == "dtw":
-        for beta in betas:
-            interval_num = min_len // beta
-            sim_vec = []
+        interval_num = min_len // beta
+        sim_vec = []
 
-            for i in range(interval_num):
-                begin = i * beta
-                end = begin + beta
+        for i in range(interval_num):
+            begin = i * beta
+            end = begin + beta
 
-                interval_list1 = normalization(list1[begin:end])
-                interval_list2 = normalization(list1[begin:end])
+            interval_list1 = normalization(list1[begin:end])
+            interval_list2 = normalization(list2[begin:end])
 
-                sim_vec.append(np.exp(0 - dtw_wdistance(interval_list1, interval_list2, window, symmetry)))
-
-            beta_sim.append(la.norm(sim_vec, norm))
+            sim_vec.append(np.exp(0 - dtw_wdistance(interval_list1, interval_list2, window, symmetry)))
 
     elif metric == "ddtw":
-        for beta in betas:
-            interval_num = min_len // beta
-            sim_vec = []
+        interval_num = min_len // beta
+        sim_vec = []
 
-            for i in range(interval_num):
-                begin = i * beta
-                end = begin + beta
+        for i in range(interval_num):
+            begin = i * beta
+            end = begin + beta
 
-                interval_list1 = normalization(list1[begin:end])
-                interval_list2 = normalization(list1[begin:end])
+            interval_list1 = normalization(list1[begin:end])
+            interval_list2 = normalization(list2[begin:end])
 
-                sim_vec.append(np.exp(0 - ddtw_wdistance(interval_list1, interval_list2, window, symmetry, smooth)))
+            sim_vec.append(np.exp(0 - ddtw_wdistance(interval_list1, interval_list2, window, symmetry, smooth)))
 
-            beta_sim.append(la.norm(sim_vec, norm))
-
-    return beta_sim
+    return sim_vec
 
 def sim_write():
     alpha_beta = [[3600, [12, 24, 48]], [86400, [7, 14, 30]], [604800, [4, 12, 24]], [2592000, [6, 12]]]
@@ -308,10 +300,10 @@ def filter_test():
                 output.write(str(line) + '\n')
 
 def main():
-    #validation()
+    validation()
     #filter_test()
     #sim_write()
-    rank_write()
+    #rank_write()
 
 if __name__ == "__main__":
     main()
