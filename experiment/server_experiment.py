@@ -44,12 +44,12 @@ def main():
                 print(alpha, beta)
                 start_time = time.time()
                 with open(result_path, 'w') as result_file:
-                    pool = multiprocessing.Pool(10)
+                    pool = multiprocessing.Pool(20)
                     for z_user in zhihu:
                         z_user = eval(z_user)
                         for w_user in weibo:
                             w_user = eval(w_user)
-                            pool.apply_async(cal_interval_sim(z_user, w_user, alpha, beta, result_file))
+                            pool.apply_async(cal_interval_sim,(z_user, w_user, alpha, beta, result_file,))
                         weibo.seek(0)
                     pool.close()
                     pool.join()
