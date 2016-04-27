@@ -13,7 +13,7 @@ weibo_path = 'data/weibo/users.json'
 manager = multiprocessing.Manager()
 write_lock = manager.Lock()
 
-def cal_interval_sim(user1, user2, alpha, beta, output):
+def cal_interval_sim(user1, user2, alpha, beta, file_path):
     sim_dict = {}
 
     sim_dict['user_pair'] = [user1['index'], user2['index']]
@@ -31,7 +31,8 @@ def cal_interval_sim(user1, user2, alpha, beta, output):
         sim_dict['sim'].append(sim_vec)
 
     write_lock.acquire()
-    output.write(str(sim_dict) + '\n')
+    with open(file_path, 'w') as output:
+        output.write(str(sim_dict) + '\n')
     write_lock.release()
 
 def main():
@@ -43,17 +44,16 @@ def main():
                 result_path = 'result/interval_sim/alpha_%d_beta_%d'%(alpha, beta)
                 print(alpha, beta)
                 start_time = time.time()
-                with open(result_path, 'w') as result_file:
-                    pool = multiprocessing.Pool(20)
-                    for z_user in zhihu:
-                        z_user = eval(z_user)
-                        for w_user in weibo:
-                            w_user = eval(w_user)
-                            pool.apply_async(cal_interval_sim,(z_user, w_user, alpha, beta, result_file,))
-                        weibo.seek(0)
-                    pool.close()
-                    pool.join()
-                    zhihu.seek(0)
+                pool = multiprocessing.Pool(20)
+                for z_user in zhihu:
+                    z_user = eval(z_user)
+                    for w_user in weibo:
+                        w_user = eval(w_user)
+                        pool.apply_async(cal_interval_sim,(z_user, w_user, alpha, beta, result_path,))
+                    weibo.seek(0)
+                pool.close()
+                pool.join()
+                zhihu.seek(0)
                 print(time.time() - start_time)
 
 
