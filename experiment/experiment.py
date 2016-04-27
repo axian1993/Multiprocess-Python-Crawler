@@ -17,8 +17,8 @@ from series_transfer import normalization
 from series_transfer import Stamps
 from user_filter import bhv_cnt_filter
 
-zhihu_path = 'data/zhihu/users.json'
-weibo_path = 'data/weibo/users.json'
+zhihu_path = 'data/zhihu/users_test.json'
+weibo_path = 'data/weibo/users_test.json'
 
 def validation(alpha = 86400, betas = [7], bhv_cnt = 100, l_norm = 1.3, cv = 10 ):
 
@@ -72,7 +72,7 @@ def validation(alpha = 86400, betas = [7], bhv_cnt = 100, l_norm = 1.3, cv = 10 
 
                         interval_sim = np.exp(0 - ddtw_wdistance(zbe, wbe, 0))
 
-                        if z_line['index'] == 0 and w_line['index'] == 0:
+                        if z_line['index'] == 0 and w_line['index'] != 0:
                             # print(zbe)
                             # print(wbe)
                             print(interval_sim)
@@ -113,13 +113,13 @@ def validation(alpha = 86400, betas = [7], bhv_cnt = 100, l_norm = 1.3, cv = 10 
     # scores = cross_validation.cross_val_score(clf, sim, target, cv = cv)
     # return scores
 
-def cal_sim(list1, list2, beta, metric, window = 0, symmetry = False ,smooth = False):
+def cal_dist(list1, list2, beta, metric, window = 0, symmetry = False ,smooth = False):
 
     min_len = min(len(list1), len(list2))
 
     if metric == "dtw":
         interval_num = min_len // beta
-        sim_vec = []
+        dist_vec = []
 
         for i in range(interval_num):
             begin = i * beta
@@ -128,11 +128,11 @@ def cal_sim(list1, list2, beta, metric, window = 0, symmetry = False ,smooth = F
             interval_list1 = normalization(list1[begin:end])
             interval_list2 = normalization(list2[begin:end])
 
-            sim_vec.append(np.exp(0 - dtw_wdistance(interval_list1, interval_list2, window, symmetry)))
+            dist_vec.append(dtw_wdistance(interval_list1, interval_list2, window, symmetry))
 
     elif metric == "ddtw":
         interval_num = min_len // beta
-        sim_vec = []
+        dist_vec = []
 
         for i in range(interval_num):
             begin = i * beta
@@ -141,9 +141,9 @@ def cal_sim(list1, list2, beta, metric, window = 0, symmetry = False ,smooth = F
             interval_list1 = normalization(list1[begin:end])
             interval_list2 = normalization(list2[begin:end])
 
-            sim_vec.append(np.exp(0 - ddtw_wdistance(interval_list1, interval_list2, window, symmetry, smooth)))
+            dist_vec.append(ddtw_wdistance(interval_list1, interval_list2, window, symmetry, smooth))
 
-    return sim_vec
+    return dist_vec
 
 def sim_write():
     alpha_beta = [[3600, [12, 24, 48]], [86400, [7, 14, 30]], [604800, [4, 12, 24]], [2592000, [6, 12]]]

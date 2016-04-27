@@ -17,7 +17,7 @@ def cal_interval_sim(user1, user2, alpha, beta, file_path):
     sim_dict = {}
 
     sim_dict['user_pair'] = [user1['index'], user2['index']]
-    sim_dict['sim'] = []
+    sim_dict['dist'] = []
 
     metric_sym_smo = [['dtw', False, False], ['dtw', True, False], ['ddtw', False, False], ['ddtw', False, True], ['ddtw', True, False], ['ddtw', True, True]]
 
@@ -27,13 +27,15 @@ def cal_interval_sim(user1, user2, alpha, beta, file_path):
     for i in range(len(metric_sym_smo)):
         metric,symmetry,smooth = metric_sym_smo[i]
         #print(metric, symmetry, smooth)
-        sim_vec = cal_sim(z_list, w_list, beta, metric, symmetry = symmetry, smooth = smooth)
-        sim_dict['sim'].append(sim_vec)
+        dist_vec = cal_dist(z_list, w_list, beta, metric, symmetry = symmetry, smooth = smooth)
+        sim_dict['dist'].append(dist_vec)
 
     write_lock.acquire()
     with open(file_path, 'w') as output:
         output.write(str(sim_dict) + '\n')
     write_lock.release()
+
+    print(sim_dict['user_pair'])
 
 def main():
     alpha_beta = [[86400, [7, 14, 30]], [604800, [4, 12, 24]], [2592000, [6, 12]]]
@@ -49,6 +51,7 @@ def main():
                     z_user = eval(z_user)
                     for w_user in weibo:
                         w_user = eval(w_user)
+                        # cal_interval_sim(z_user, w_user, alpha, beta, result_path)
                         pool.apply_async(cal_interval_sim,(z_user, w_user, alpha, beta, result_path,))
                     weibo.seek(0)
                 pool.close()

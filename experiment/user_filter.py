@@ -7,12 +7,12 @@ def bhv_cnt_filter(cnt, path1, path2):
     with open(path1, 'r') as z_user, open(path2, 'r') as w_user:
         for line in z_user:
             line = eval(line)
-            if len(line['activity']) >= 100:
+            if len(line['activity']) >= cnt:
                 z_index.append(line['index'])
 
         for line in w_user:
             line = eval(line)
-            if len(line['activity']) >= 100:
+            if len(line['activity']) >= cnt:
                 w_index.append(line['index'])
 
         for i in z_index:
