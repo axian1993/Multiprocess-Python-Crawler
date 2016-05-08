@@ -60,6 +60,12 @@ def non_dtw_distance(s,t,default=None,costf=None):
 
     return sum([costf(a,b) for a,b in zip(s,t)])
 
+def euclid_distance(s, t):
+
+    dist = sum([abs(a - b)**2 for a,b in zip(s,t)])
+
+    return math.sqrt(dist)
+
 def initialize_dmatrix(rows,cols,window):
     d = np.zeros((rows,cols),dtype='float')
 
@@ -282,9 +288,9 @@ def cosine(y1, y2, x = 3):
     return cos_sim
 
 def main():
-    list1 = [6,1, 5, 10, 5, 4, 9, 3]
-    list2 = [3, 2, 8, 4, 3, 6, 9, 1]
-    print(dtw_wdistance(list1, list2, 0, True))
+    list1 = [3,1]
+    list2 = [3,3]
+    print(euclid_distance(list1, list2))
 
 if __name__ == "__main__":
     main()
