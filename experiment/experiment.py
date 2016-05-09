@@ -304,9 +304,9 @@ weibo_path = 'data/weibo/users_test.json'
 
 # 将用户间的距离矩阵写入文件
 def dist_file_generator():
-    series_type = 'week_series'
+    series_type = 'month_series'
     print(series_type)
-    betas = [24,12,4]
+    betas = [6,12]
 
     z_cnt_path = 'data/zhihu/cnt/%s'%(series_type)
     w_cnt_path = 'data/weibo/cnt/%s'%(series_type)
