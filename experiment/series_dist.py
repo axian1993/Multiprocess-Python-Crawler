@@ -21,7 +21,7 @@ def cal_dist_vec(beta, list1, list2):
         interval_list1 = normalization(list1[begin:end])
         interval_list2 = normalization(list2[begin:end])
 
-        dist_vec.append(euclid_distance(interval_list1, interval_list2))
+        dist_vec.append(regular_euclid_distance(interval_list1, interval_list2))
 
     return dist_vec
 

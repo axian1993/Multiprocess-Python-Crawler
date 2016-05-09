@@ -66,6 +66,13 @@ def euclid_distance(s, t):
 
     return math.sqrt(dist)
 
+def regular_euclid_distance(s, t):
+
+    dist = sum([abs(a - b)**2 for a,b in zip(s,t)])
+    dist = dist/len(s)
+
+    return math.sqrt(dist)
+
 def initialize_dmatrix(rows,cols,window):
     d = np.zeros((rows,cols),dtype='float')
 
