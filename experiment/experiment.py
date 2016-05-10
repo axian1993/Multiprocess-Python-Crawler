@@ -317,9 +317,9 @@ def cal_dist_vec(beta, list1, list2):
 
 # 将用户序列间的距离矩阵写入文件
 def series_dist_generator():
-    series_type = 'day_series'
+    series_type = 'month_series'
     print(series_type)
-    betas = [7,14,30]
+    betas = [6, 12]
 
     z_cnt_path = 'data/zhihu/cnt/%s'%(series_type)
     w_cnt_path = 'data/weibo/cnt/%s'%(series_type)
@@ -341,6 +341,10 @@ def series_dist_generator():
 
     for beta in betas:
         print('beta: %d'%beta)
+
+        #输出文件名
+        file_name = "%s_beta_%d.txt"%(out_path,beta)
+
         dist_mat = zeros((1356, 1356), dtype = list)
         finished_cnt = 0
         start = time.time()
@@ -356,14 +360,16 @@ def series_dist_generator():
                 dist_mat[z_user][w_index] = result
                 w_index += 1
 
+            with open(file_name, 'a') as output:
+                output.write(str(ndarray.tolist(dist_mat[z_user][:])) + '\n')
+
             finished_cnt += 1
             print('%d users finished cost %f seconds'%(finished_cnt,time.time() - start))
 
         #print(dist_mat)
 
-        file_name = "%s_beta_%d.txt"%(out_path,beta)
-        with open(file_name, 'w') as output:
-            output.write(str(ndarray.tolist(dist_mat)))
+
+
         #print(load(file_name))
 
 #将用户的统计间的距离矩阵写入文件
@@ -450,7 +456,7 @@ def figure_identical_rank():
         plt.savefig(path)
 
 def main():
-    figure_identical_rank()
+    series_dist_generator()
 
 if __name__ == "__main__":
     main()
