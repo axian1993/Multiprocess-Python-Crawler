@@ -317,9 +317,9 @@ def cal_dist_vec(beta, list1, list2):
 
 # 将用户序列间的距离矩阵写入文件
 def series_dist_generator():
-    series_type = 'week_series'
+    series_type = 'day_series'
     print(series_type)
-    betas = [4,12,24]
+    betas = [7,14,30]
 
     z_cnt_path = 'data/zhihu/cnt/%s'%(series_type)
     w_cnt_path = 'data/weibo/cnt/%s'%(series_type)
@@ -454,6 +454,28 @@ def figure_identical_rank():
 
         path = 'figure/rank_distribution/{0}.png'.format(title)
         plt.savefig(path)
+
+#plan A 将距离向量的矩阵写成match矩阵
+def vec_to_match():
+    deta = 1
+    alpha_betas = [['day', [7, 14, 30]], ['week', [4, 12, 24]], ['month', [6, 12]]]
+
+    for alpha_beta in alpha_betas:
+        alpha = alpha_beta[0]
+        for beta in alpha_beta[1]:
+            input_path = 'result/dist_vec_mat/{0}_series_beta_{1}.txt'.format(alpha, beta)
+            output_path = 'result/match_mat/{0}_series_beta_{1}.txt'.format(alpha, beta)
+            match_mat = np.zeros((1356,1356))
+            with open(input_path, 'r') as vec_mat:
+                for (i,line) in enumerate(vec_mat):
+                    line = eval(line)
+                    for (j,vec) in enumerate(line):
+                        for dis in vec:
+                            if dis <= deta:
+                                match_mat[i][j] += 1
+                        match_mat[i][j] = match_mat[i][j] / len(vec)
+            np.savetxt(output_path, match_mat)
+
 
 def main():
     series_dist_generator()
