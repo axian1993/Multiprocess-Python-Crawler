@@ -66,6 +66,18 @@ def euclid_distance(s, t):
 
     return math.sqrt(dist)
 
+def derivate_euclid_distance(s, t, smooth = False):
+    if smooth == False:
+        s = derivative(s)
+        t = derivative(t)
+    else:
+        s = smooth_derivative(s)
+        t = smooth_derivative(t)
+
+    dist = sum([abs(a - b)**2 for a,b in zip(s,t)])
+
+    return math.sqrt(dist)
+
 def regular_euclid_distance(s, t):
 
     dist = sum([abs(a - b)**2 for a,b in zip(s,t)])

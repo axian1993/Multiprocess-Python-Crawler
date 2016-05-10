@@ -1,24 +1,16 @@
 # -*- coding: utf-8 -*-
 
 #built-in/std
-import os
-
-# requirements
-from sklearn import cross_validation
-from sklearn import svm
 import numpy as np
 from numpy import *
-from numpy import linalg as la
 import matplotlib.pyplot as plt
 import time
 import multiprocessing
 
 # Module
 from similarity import *
-from series_transfer import normalization
-from series_transfer import Stamps
+from series_transfer import *
 from user_filter import bhv_cnt_filter
-import series_dist
 
 zhihu_path = 'data/zhihu/users_test.json'
 weibo_path = 'data/weibo/users_test.json'
@@ -302,8 +294,29 @@ weibo_path = 'data/weibo/users_test.json'
 #             if line['index'] in test_user:
 #                 output.write(str(line) + '\n')
 
-# 将用户间的距离矩阵写入文件
-def dist_file_generator():
+#计算两条序列以beta分割的距离向量
+def cal_dist_vec(beta, list1, list2):
+    min_len = min(len(list1), len(list2))
+
+    #距离向量的长度
+    interval_num = min_len // beta
+
+    #存放距离向量的列表
+    dist_vec = []
+
+    for i in range(interval_num):
+        begin = i * beta
+        end = begin + beta
+
+        interval_list1 = normalization(list1[begin:end])
+        interval_list2 = normalization(list2[begin:end])
+
+        dist_vec.append(regular_euclid_distance(interval_list1, interval_list2))
+
+    return dist_vec
+
+# 将用户序列间的距离矩阵写入文件
+def series_dist_generator():
     series_type = 'day_series'
     print(series_type)
     betas = [7,14,30]
@@ -333,7 +346,7 @@ def dist_file_generator():
         start = time.time()
         for z_user in z_users:
             pool = multiprocessing.Pool(20)
-            result_list = [x.get() for x in [pool.apply_async(series_dist.cal_dist_vec,(beta, z_users[z_user], w_users[w_user],)) for w_user in w_users]]
+            result_list = [x.get() for x in [pool.apply_async(cal_dist_vec,(beta, z_users[z_user], w_users[w_user],)) for w_user in w_users]]
 
             pool.close()
             pool.join()
@@ -353,9 +366,91 @@ def dist_file_generator():
             output.write(str(ndarray.tolist(dist_mat)))
         #print(load(file_name))
 
+#将用户的统计间的距离矩阵写入文件
+def statistic_dist_generator():
+    alphas = {'hour', 'weekday', 'month', 'year'}
+
+    for alpha in alphas:
+        z_path = 'data/zhihu/norm_cnt/%s_statistics'%alpha
+        w_path = 'data/weibo/norm_cnt/%s_statistics'%alpha
+
+        out_path = 'result/dist_mat/smooth_derivate_euclid/%s_dist_mat.txt'%alpha
+
+        dist_mat = np.zeros((1356,1356))
+
+        with open(z_path, 'r') as zhihu, open(w_path, 'r') as weibo:
+            for z_line in zhihu:
+                z_line = eval(z_line)
+                for w_line in weibo:
+                    w_line = eval(w_line)
+                    dist_mat[z_line['index']][w_line['index']] = derivate_euclid_distance(z_line['count'], w_line['count'], True)
+
+                weibo.seek(0)
+
+        np.savetxt(out_path, dist_mat)
+
+#在统计的距离矩阵中，找出同一个用户与自己是第几相似
+def figure_identical_rank():
+    dist_metries = ['derivate_euclid', 'euclid', 'smooth_derivate_euclid']
+    alphas = ['hour', 'weekday', 'month', 'year']
+
+    dist_metry = 'euclid'
+    alpha = 'hour'
+
+    cnts = {3000}
+
+    for cnt in cnts:
+        users_index = bhv_cnt_filter(cnt)
+        user_num = len(users_index)
+
+        matrix_path = 'result/dist_mat/{0}/{1}_dist_mat.txt'.format(dist_metry, alpha)
+
+        full_mat = np.loadtxt(matrix_path)
+
+        dist_mat = np.zeros((user_num, user_num))
+
+        for (x1, y1) in enumerate(users_index):
+            for (x2, y2) in enumerate(users_index):
+                dist_mat[x1][x2] = full_mat[y1][y2]
+
+        K_distribution = np.zeros((2, user_num), dtype=np.int)
+
+        # assignment
+        for i in range(user_num):
+            row_k = sorted(dist_mat[i]).index(dist_mat[i][i])
+            K_distribution[0][row_k] += 1
+
+            col_k = sorted(dist_mat[:, i]).index(dist_mat[i][i])
+            K_distribution[1][col_k] += 1
+
+        for i in range(2):
+            for j in range(1,user_num):
+                K_distribution[i][j] = K_distribution[i][j-1] + K_distribution[i][j]
+
+        # plot X-rows figure
+        plt.clf()
+        X = np.linspace(0, user_num - 1, user_num)
+
+        title = '{0}_{1}_{2}'.format(alpha, dist_metry, cnt)
+        plt.title(title)
+
+        plt.ylabel('rank-cnt')
+        plt.xlabel('rank')
+
+        plt.subplot(2, 1, 1)
+        plt.plot(X, K_distribution[0])
+        plt.xlim(0.0, float(user_num - 1))
+
+        plt.subplot(2, 1, 2)
+        plt.plot(X, K_distribution[1])
+
+        plt.xlim(0.0, float(user_num - 1))
+
+        path = 'figure/rank_distribution/{0}.png'.format(title)
+        plt.savefig(path)
 
 def main():
-    dist_file_generator()
+    figure_identical_rank()
 
 if __name__ == "__main__":
     main()
