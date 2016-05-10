@@ -317,9 +317,9 @@ def cal_dist_vec(beta, list1, list2):
 
 # 将用户序列间的距离矩阵写入文件
 def series_dist_generator():
-    series_type = 'month_series'
+    series_type = 'week_series'
     print(series_type)
-    betas = [6, 12]
+    betas = [4,12,24]
 
     z_cnt_path = 'data/zhihu/cnt/%s'%(series_type)
     w_cnt_path = 'data/weibo/cnt/%s'%(series_type)

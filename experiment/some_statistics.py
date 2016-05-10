@@ -75,11 +75,10 @@ def behaviors_cnt():
 def show_vec_mat():
     file_path = 'result/dist_vec_mat/day_series_beta_7.txt'
     with open(file_path, 'r') as vec_mat:
-        line = vec_mat.readline()
-        line = eval(line)
         for i in range(5):
-            for j in range(5):
-                print(line[i][j])
+            line = vec_mat.readline()
+            line = eval(line)
+            print([line[i] for i in range(5)])
 
 
 def main():
