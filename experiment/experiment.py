@@ -476,6 +476,42 @@ def vec_to_match():
                         match_mat[i][j] = match_mat[i][j] / len(vec)
             np.savetxt(output_path, match_mat)
 
+#根据距离矩阵计算准确率
+def cal_accuracy():
+    cnt = 1000
+    k = 100
+
+    mat_path = 'result/dist_mat/euclid/hour_dist_mat.txt'
+
+    full_matrix = np.loadtxt(mat_path)
+
+    users_index = bhv_cnt_filter(cnt)
+    user_num = len(users_index)
+
+    matrix = np.zeros((user_num, user_num))
+    for (x1, x2) in enumerate(users_index):
+        for (y1, y2) in enumerate(users_index):
+            matrix[x1][y1] = full_matrix[x2][y2]
+
+    identify_correctly = 0
+
+    for i in range(user_num):
+        self_value = matrix[i][i]
+        false_pos = 0
+        for j in range(user_num):
+            if self_value > matrix[i][j]:
+                false_pos += 1
+            if false_pos >= k:
+                break
+        if false_pos < k:
+            identify_correctly += 1
+
+    accuracy = identufy_correctly / user_num
+
+    return accuracy
+
+
+
 
 def main():
     series_dist_generator()
