@@ -351,7 +351,7 @@ def series_dist_generator():
         start = time.time()
         for z_user in z_users:
             print(z_user)
-            pool = multiprocessing.Pool(2)
+            pool = multiprocessing.Pool(20)
             result_list = [x.get() for x in [pool.apply_async(cal_dist_vec,(beta, z_users[z_user], w_users[w_user],)) for w_user in w_users]]
 
             pool.close()
