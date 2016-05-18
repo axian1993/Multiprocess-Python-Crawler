@@ -317,50 +317,51 @@ def cal_dist_vec(beta, list1, list2):
 
 # 将用户序列间的距离矩阵写入文件
 def series_dist_generator():
-    series_type = 'day_series'
-    print(series_type)
-    betas = [7,14,30]
+    options = [[7, 'hour'], [14, 'hour'], [14, 'weekday'], [30, 'hour'], [30, 'weekday']]
 
-    z_cnt_path = 'data/zhihu/cnt/%s'%(series_type)
-    w_cnt_path = 'data/weibo/cnt/%s'%(series_type)
+    for option in options:
+        print(option)
 
-    out_path = 'result/dist_vec_mat/%s'%(series_type)
+        z_cnt_path = 'data/zhihu/norm_cnt/{0}_days_{1}'.format(option[0], option[1])
+        w_cnt_path = 'data/weibo/norm_cnt/{0}_days_{1}'.format(option[0], option[1])
 
-    z_users = {}
-    w_users = {}
+        out_path = 'result/division_statistic_dist/{0}_days_{1}'.format(option[0], option[1])
 
-    with open(z_cnt_path, 'r') as zhihu:
-        for line in zhihu:
-            line = eval(line)
-            z_users[line['index']] = line['count']
+        z_users = {}
+        w_users = {}
 
-    with open(w_cnt_path, 'r') as weibo:
-        for line in weibo:
-            line = eval(line)
-            w_users[line['index']] = line['count']
+        with open(z_cnt_path, 'r') as zhihu:
+            for line in zhihu:
+                line = eval(line)
+                z_users[line['index']] = line['series']
 
-    for beta in betas:
-        print('beta: %d'%beta)
+        with open(w_cnt_path, 'r') as weibo:
+            for line in weibo:
+                line = eval(line)
+                w_users[line['index']] = line['series']
 
         #输出文件名
-        file_name = "%s_beta_%d.txt"%(out_path,beta)
+        if option[1] == 'hour':
+            beta = 24
+        elif option[1] == 'day':
+            beta = 7
 
         dist_mat = zeros((1356, 1356), dtype = list)
         finished_cnt = 0
         start = time.time()
         for z_user in z_users:
-            pool = multiprocessing.Pool(20)
+            print(z_user)
+            pool = multiprocessing.Pool(2)
             result_list = [x.get() for x in [pool.apply_async(cal_dist_vec,(beta, z_users[z_user], w_users[w_user],)) for w_user in w_users]]
 
             pool.close()
             pool.join()
 
-            w_index = 0
-            for result in result_list:
-                dist_mat[z_user][w_index] = result
-                w_index += 1
+            for (w_user,result) in enumerate(result_list):
+                dist_mat[z_user][w_user] = result
 
-            with open(file_name, 'a') as output:
+            #print(dist_mat[z_user][:])
+            with open(out_path, 'a') as output:
                 output.write(str(ndarray.tolist(dist_mat[z_user][:])) + '\n')
 
             finished_cnt += 1
@@ -374,13 +375,13 @@ def series_dist_generator():
 
 #将用户的统计间的距离矩阵写入文件
 def statistic_dist_generator():
-    alphas = {'hour', 'weekday', 'month', 'year'}
+    alphas = {'hour'}
 
     for alpha in alphas:
         z_path = 'data/zhihu/norm_cnt/%s_statistics'%alpha
         w_path = 'data/weibo/norm_cnt/%s_statistics'%alpha
 
-        out_path = 'result/dist_mat/smooth_derivate_euclid/%s_dist_mat.txt'%alpha
+        out_path = 'result/dist_mat/smooth_dtw_der/%s_dist_mat.txt'%alpha
 
         dist_mat = np.zeros((1356,1356))
 
@@ -389,7 +390,7 @@ def statistic_dist_generator():
                 z_line = eval(z_line)
                 for w_line in weibo:
                     w_line = eval(w_line)
-                    dist_mat[z_line['index']][w_line['index']] = derivate_euclid_distance(z_line['count'], w_line['count'], True)
+                    dist_mat[z_line['index']][w_line['index']] = ddtw_wdistance(z_line['count'], w_line['count'], 2,smooth = True)
 
                 weibo.seek(0)
 
@@ -397,89 +398,160 @@ def statistic_dist_generator():
 
 #在统计的距离矩阵中，找出同一个用户与自己是第几相似
 def figure_identical_rank():
-    dist_metries = ['derivate_euclid', 'euclid', 'smooth_derivate_euclid']
-    alphas = ['hour', 'weekday', 'month', 'year']
+    dist_metries = ['derivate_euclid', 'euclid', 'smooth_derivate_euclid', 'dtw', 'dtw_der', 'smooth_dtw_der']
+    alphas = ['hour']
 
-    dist_metry = 'euclid'
-    alpha = 'hour'
-
-    cnts = {3000}
+    cnts = {1000}
 
     for cnt in cnts:
         users_index = bhv_cnt_filter(cnt)
         user_num = len(users_index)
+        show_num = user_num // 10
 
-        matrix_path = 'result/dist_mat/{0}/{1}_dist_mat.txt'.format(dist_metry, alpha)
+        for dist_metry in dist_metries:
+            for alpha in alphas:
+                print(dist_metry, alpha)
 
-        full_mat = np.loadtxt(matrix_path)
+                matrix_path = 'result/dist_mat/{0}/{1}_dist_mat.txt'.format(dist_metry, alpha)
+                #matrix_path = 'result/match_mat/day_series_beta_7.txt'
 
-        dist_mat = np.zeros((user_num, user_num))
+                full_mat = np.loadtxt(matrix_path)
 
-        for (x1, y1) in enumerate(users_index):
-            for (x2, y2) in enumerate(users_index):
-                dist_mat[x1][x2] = full_mat[y1][y2]
+                dist_mat = np.zeros((user_num, user_num))
 
-        K_distribution = np.zeros((2, user_num), dtype=np.int)
+                for (x1, y1) in enumerate(users_index):
+                    for (x2, y2) in enumerate(users_index):
+                        dist_mat[x1][x2] = full_mat[y1][y2]
 
-        # assignment
-        for i in range(user_num):
-            row_k = sorted(dist_mat[i]).index(dist_mat[i][i])
-            K_distribution[0][row_k] += 1
+                K_distribution = np.zeros((2, user_num), dtype=np.float)
 
-            col_k = sorted(dist_mat[:, i]).index(dist_mat[i][i])
-            K_distribution[1][col_k] += 1
+                # assignment
+                for i in range(user_num):
+                    row_k = sorted(dist_mat[i]).index(dist_mat[i][i])
+                    K_distribution[0][row_k] += 1
 
-        for i in range(2):
-            for j in range(1,user_num):
-                K_distribution[i][j] = K_distribution[i][j-1] + K_distribution[i][j]
+                    col_k = sorted(dist_mat[:, i]).index(dist_mat[i][i])
+                    K_distribution[1][col_k] += 1
 
-        # plot X-rows figure
-        plt.clf()
-        X = np.linspace(0, user_num - 1, user_num)
 
-        title = '{0}_{1}_{2}'.format(alpha, dist_metry, cnt)
-        plt.title(title)
+                for i in range(2):
+                    for j in range(1,user_num):
+                        K_distribution[i][j] = K_distribution[i][j-1] + K_distribution[i][j]
+                    for j in range(0,user_num):
+                        K_distribution[i][j] = K_distribution[i][j] / user_num
+                    print(K_distribution[0][0:show_num])
 
-        plt.ylabel('rank-cnt')
-        plt.xlabel('rank')
+                # plot X-rows figure
+                plt.clf()
+                X = np.linspace(1, show_num, show_num)
 
-        plt.subplot(2, 1, 1)
-        plt.plot(X, K_distribution[0])
-        plt.xlim(0.0, float(user_num - 1))
+                # plt.subplot(2, 1, 1)
 
-        plt.subplot(2, 1, 2)
-        plt.plot(X, K_distribution[1])
+                plt.plot(X, K_distribution[0][0:show_num])
+                plt.xlim(1.0, float(show_num))
 
-        plt.xlim(0.0, float(user_num - 1))
+                # plt.subplot(2, 1, 2)
+                # plt.plot(X, K_distribution[1][0:show_num])
+                #
+                # plt.xlim(1.0, float(show_num))
 
-        path = 'figure/rank_distribution/{0}.png'.format(title)
-        plt.savefig(path)
+                title = '{0}_{1}_{2}'.format(alpha, dist_metry, cnt)
+                plt.title(title)
+
+                plt.ylabel('accuracy')
+                plt.xlabel('k')
+                plt.axis([1, show_num, 0, 1])
+
+                path = 'figure/accuracy_k/{0}.png'.format(title)
+                plt.savefig(path)
 
 #plan A 将距离向量的矩阵写成match矩阵
 def vec_to_match():
-    deta = 1
-    alpha_betas = [['day', [7, 14, 30]], ['week', [4, 12, 24]], ['month', [6, 12]]]
+    options = [['day', 7], ['day', 14], ['day', 30], ['week', 4], ['week', 12], ['week', 24], ['month',6], ['month', 12]]
 
-    for alpha_beta in alpha_betas:
-        alpha = alpha_beta[0]
-        for beta in alpha_beta[1]:
-            input_path = 'result/dist_vec_mat/{0}_series_beta_{1}.txt'.format(alpha, beta)
-            output_path = 'result/match_mat/{0}_series_beta_{1}.txt'.format(alpha, beta)
+    for delta in [i/10 for i in range(1, 16)]:
+        print(delta)
+        for option in options:
+            print(option)
+            input_path = 'result/dist_vec_mat/{0}_series_beta_{1}.txt'.format(option[0], option[1])
+            output_path = 'result/match_mat_delta/{0}_series_beta_{1}_delta_{2}.txt'.format(option[0], option[1], delta)
             match_mat = np.zeros((1356,1356))
             with open(input_path, 'r') as vec_mat:
+                start = time.time()
                 for (i,line) in enumerate(vec_mat):
-                    line = eval(line)
+                    line = np.array(eval(line))
                     for (j,vec) in enumerate(line):
+                        vec = np.array(vec)
                         for dis in vec:
-                            if dis <= deta:
+                            if dis <= delta:
                                 match_mat[i][j] += 1
-                        match_mat[i][j] = match_mat[i][j] / len(vec)
+                        if len(vec) != 0:
+                            match_mat[i][j] = match_mat[i][j] / len(vec)
+                        else:
+                            match_mat[i][j] = 0
+                print(time.time() - start)
             np.savetxt(output_path, match_mat)
 
-#根据距离矩阵计算准确率
-def cal_accuracy():
+#根据距离矩阵选取前k个用户作为预测结果 计算准确率
+def top_k_accuracy():
     cnt = 1000
-    k = 100
+    ks = [1,25,50,100]
+
+    options = [['day', 7], ['day', 14], ['day', 30], ['week', 4], ['week', 12], ['week', 24], ['month',6], ['month', 12]]
+
+    users_index = bhv_cnt_filter(cnt)
+    user_num = len(users_index)
+
+    acc_dict = {}
+
+    for option in options:
+        print(option)
+        k_list = []
+        for k in ks:
+            print(k)
+            delta_list = []
+            for delta in [i/10 for i in range(1,16)]:
+                print(delta)
+                mat_path = 'result/match_mat_delta/{0}_series_beta_{1}_delta_{2}.txt'.format(option[0], option[1], delta)
+
+                full_matrix = np.loadtxt(mat_path)
+
+                matrix = np.zeros((user_num, user_num))
+                for (x1, x2) in enumerate(users_index):
+                    for (y1, y2) in enumerate(users_index):
+                        matrix[x1][y1] = full_matrix[x2][y2]
+
+                identify_correctly = 0
+
+                for i in range(user_num):
+                    self_value = matrix[i][i]
+                    false_pos = 0
+                    for j in range(user_num):
+                        # if self_value > matrix[i][j]:
+                        #     false_pos += 1
+                        if self_value < matrix[i][j]:
+                            false_pos += 1
+                        if false_pos >= k:
+                            break
+                    if false_pos < k:
+                        identify_correctly += 1
+
+                accuracy = identify_correctly / user_num
+
+                delta_list.append(accuracy)
+
+            k_list.append(delta_list)
+
+        acc_dict[str(option)] = k_list
+
+    with open('result/accuracy/series_delta', 'w') as output:
+        output.write(str(acc_dict))
+
+
+# 根据距离矩阵 找出小于阈值的配对作为预测结果 计算准确率
+def threshold_accuracy():
+    cnt = 1000
+    threshold = 1.2
 
     mat_path = 'result/dist_mat/euclid/hour_dist_mat.txt'
 
@@ -493,27 +565,112 @@ def cal_accuracy():
         for (y1, y2) in enumerate(users_index):
             matrix[x1][y1] = full_matrix[x2][y2]
 
-    identify_correctly = 0
+    total = 0
+    correct = 0
 
     for i in range(user_num):
-        self_value = matrix[i][i]
-        false_pos = 0
         for j in range(user_num):
-            if self_value > matrix[i][j]:
-                false_pos += 1
-            if false_pos >= k:
-                break
-        if false_pos < k:
-            identify_correctly += 1
+            if matrix[i][j] <= threshold:
+                total += 1
+                statistic_plot(users_index[i], users_index[j])
+                if i == j:
+                    correct += 1
 
-    accuracy = identufy_correctly / user_num
+    print(total, correct, correct/total)
 
-    return accuracy
+# 画出距离矩阵中距离较小的用户对及相同用户
+def statistic_plot(index1, index2):
+    z_path = 'data/zhihu/norm_cnt/hour_statistics'
+    w_path = 'data/weibo/norm_cnt/hour_statistics'
 
+    z_user = {}
+    w_user = {}
 
+    with open(z_path, 'r') as zhihu, open(w_path, 'r') as weibo:
+        for line in zhihu:
+            line = eval(line)
+            z_user[line['index']] = line['count']
+
+        for line in weibo:
+            line = eval(line)
+            w_user[line['index']] = line['count']
+
+    x = range(24)
+    y1_zhihu = np.array(z_user[index1])
+    y2_weibo = np.array(w_user[index2])
+    y1_weibo = np.array(w_user[index1])
+    y2_zhihu = np.array(z_user[index2])
+
+    plt.plot(x, y1_zhihu, 'b-', label='user%d_zhihu'%index1)
+    plt.plot(x, y2_weibo, 'r-', label='user%d_weibo'%index2)
+    plt.plot(x, y1_weibo, 'g-', label='user%d_weibo'%index1)
+    # plt.plot(x, y2_zhihu, 'r--', label='user%d_zhihu'%index2)
+
+    plt.legend(loc='lower right')
+    plt.show()
+
+# 计算用户名之间的相似度
+def cal_name_sim():
+    z_name_path = 'data/zhihu/user_name'
+    w_name_path = 'data/weibo/user_name'
+
+    sim_mat = np.zeros((1356,1356))
+
+    with open(z_name_path, 'r') as zhihu, open(w_name_path, 'r') as weibo:
+        z_dict = eval(zhihu.readline())
+        w_dict = eval(weibo.readline())
+
+        for z_index in z_dict:
+            z_name = z_dict[z_index]
+            print(len(z_name))
+            print(z_name)
+            for w_index in w_dict:
+                w_name = w_dict[w_index]
+                if z_name != '' and w_name != '':
+                    sim_mat[z_index][w_index] = 2 * LCSubstring(w_name, z_name) / (len(w_name + z_name))
+
+    out_path = 'result/name_sim_mat/lcsubstr.txt'
+    np.savetxt(out_path, sim_mat)
+
+# 画准确率随delta变化的图
+def plot_accuracy_delta():
+    input_path = 'result/accuracy/series_delta'
+    ks = [1, 25, 50, 100]
+
+    with open(input_path, 'r') as accuracy:
+        acc_dict = eval(accuracy.readline())
+
+    for option in acc_dict:
+        k_list = acc_dict[option]
+        option = eval(option)
+
+        plt.clf()
+
+        title = 'series_{0}_{1}'.format(option[0], option[1])
+        plt.title(title)
+
+        plt.xlabel('delta')
+        plt.ylabel('accuracy')
+
+        save_path = 'figure/series_accuracy/{0}_{1}'.format(option[0], option[1])
+
+        for (index, k) in enumerate(ks):
+            X = np.linspace(0.1, 1.5, 15)
+            Y = k_list[index]
+            label = 'k=%s'%k
+            plt.plot(X, Y, label=label)
+
+        plt.savefig(save_path)
 
 
 def main():
+    # top_k_accuracy()
+    # vec_to_match()
+    # threshold_accuracy()
+    # cal_name_sim()
+    # statistic_dist_generator()
+    # figure_identical_rank()
+    # plot_accuracy_delta()
     series_dist_generator()
 
 if __name__ == "__main__":

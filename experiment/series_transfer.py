@@ -9,8 +9,9 @@ import os.path
 class Stamps:
     month_day = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
-    def __init__(self, timestamps, format = None):
+    def __init__(self, timestamps, begin=1458576000, format = None):
         self.tsl = []
+        self.begin = begin
         if not isinstance(timestamps, list):
             raise TypeError("StampToSeries 接受的参数必须是列表类型")
         if format != None:
@@ -22,6 +23,14 @@ class Stamps:
                 self.tsl.append(int(timestamps[i]))
 
         self.tsl = sorted(self.tsl, reverse = True)
+
+        start = 0
+        for i in range(len(self.tsl)):
+            if self.tsl[i] <= begin:
+                start = i
+                break
+
+        self.tsl = self.tsl[start:]
 
     def contiIntervalCnt(self, interval = 1, begin = None, end = None):
         if self.tsl == []:
@@ -212,6 +221,58 @@ class Stamps:
         return cnt_list
             #return day_cnt
 
+    # 每固定天数算出一个在小时和weekday上的分布，最终得到一个包含多个分布的序列
+    def contiOnFix(self, days, statistic):
+        tsl = self.tsl
+        begin = self.begin
+
+        if tsl == []:
+            return []
+
+        days = days * 86400
+        num_statistic = (begin - tsl[len(tsl) - 1]) // days
+
+        final_series = []
+
+        if statistic == 'hour':
+            cardinal = 24
+
+            distribution = [0 for i in range(cardinal)]
+
+            k = 1
+            lower = begin - k * days
+
+            for i in range(len(tsl)):
+                while tsl[i] <= lower:
+                    final_series.extend(normalization(distribution))
+                    distribution = [0 for i in range(cardinal)]
+                    k += 1
+                    upper = begin - k * days
+                    lower = upper - days
+
+                distribution[time.localtime(tsl[i])[3]] += 1
+
+        elif statistic == 'weekday':
+            cardinal = 7
+
+            distribution = [0 for i in range(cardinal)]
+
+            k = 1
+            lower = begin - k * days
+
+            for i in range(len(tsl)):
+                while tsl[i] <= lower:
+                    final_series.extend(normalization(distribution))
+                    distribution = [0 for i in range(cardinal)]
+                    k += 1
+                    upper = begin - k * days
+                    lower = upper - days
+
+                distribution[time.localtime(tsl[i])[6]] += 1
+
+        return final_series
+
+
 def normalization(cnt_list):
     if len(cnt_list) == 0:
         return cnt_list
@@ -227,7 +288,7 @@ def normalization(cnt_list):
                 cnt_list[i] = (cnt_list[i] - mean) / stdev
         return cnt_list
 
-if __name__ == "__main__":
+def main():
     #对离散的时间戳做count
     # with open("data/zhihu/users.json", 'r') as input, open("data/zhihu/cnt/hour_statistics", "w") as output:
     #     for line in input:
@@ -244,14 +305,39 @@ if __name__ == "__main__":
     #         output.write(str(out) + '\n')
 
     #标准化cnt序列
-    rootdir = "data/zhihu/cnt"
-    outputdir = "data/zhihu/norm_cnt"
-    for parent, dirnames, filenames in os.walk(rootdir):
-        for filename in filenames:
-            input_path = os.path.join(parent, filename)
-            output_path = os.path.join(outputdir, filename)
-            with open(input_path, 'r') as input, open(output_path, 'w') as output:
-                for line in input:
+    # rootdir = "data/zhihu/cnt"
+    # outputdir = "data/zhihu/norm_cnt"
+    # for parent, dirnames, filenames in os.walk(rootdir):
+    #     for filename in filenames:
+    #         input_path = os.path.join(parent, filename)
+    #         output_path = os.path.join(outputdir, filename)
+    #         with open(input_path, 'r') as input, open(output_path, 'w') as output:
+    #             for line in input:
+    #                 line = eval(line)
+    #                 line['count'] = normalization(line['count'])
+    #                 output.write(str(line) + '\n')
+
+    options = [[7, 'hour'], [14, 'hour'], [14, 'weekday'], [30, 'hour'], [30, 'weekday']]
+    platforms = ['weibo', 'zhihu']
+
+    for platform in platforms:
+        input_path = 'data/{0}/users.json'.format(platform)
+
+        for option in options:
+            print(platform, option)
+            output_path = 'data/{0}/norm_cnt/{1}_days_{2}'.format(platform, option[0], option[1])
+
+            with open(input_path, 'r') as input_file, open(output_path, 'w') as output_file:
+                for line in input_file:
                     line = eval(line)
-                    line['count'] = normalization(line['count'])
-                    output.write(str(line) + '\n')
+                    stamp = Stamps(line['activity'])
+
+                    out = {}
+                    out['index'] = line['index']
+                    out['series'] = stamp.contiOnFix(option[0], option[1])
+                    output_file.write(str(out) + '\n')
+
+
+
+if __name__ == "__main__":
+    main()

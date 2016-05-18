@@ -76,9 +76,9 @@ from auth import Logging
 """
 
 
-if islogin() != True:
-    Logging.error("你的身份信息已经失效，请重新生成身份信息( `python auth.py` )。")
-    raise Exception("无权限(403)")
+# if islogin() != True:
+#     Logging.error("你的身份信息已经失效，请重新生成身份信息( `python auth.py` )。")
+#     raise Exception("无权限(403)")
 
 
 class Question:
@@ -335,15 +335,14 @@ class User:
                 self.user_id = user_id
 
     def parser(self, proxy = None, user_agent = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:34.0) Gecko/20100101 Firefox/34.0"):
-        requests = requests.Session()
-        requests.cookies = http.cookiejar.LWPCookieJar('cookies')
-        self.requests = requests
-        try:
-            requests.cookies.load(ignore_discard=True)
-        except:
-            Logging.error("你还没有登录知乎哦 ...")
-            Logging.info("执行 `python auth.py` 即可以完成登录。")
-            raise Exception("无权限(403)")
+        self.requests = requests.Session()
+        # self.requests.cookies = http.cookiejar.LWPCookieJar('cookies')
+        # try:
+        #     requests.cookies.load(ignore_discard=True)
+        # except:
+        #     Logging.error("你还没有登录知乎哦 ...")
+        #     Logging.info("执行 `python auth.py` 即可以完成登录。")
+        #     raise Exception("无权限(403)")
         # if proxy != None:
         #     self.requests.proxies = {
         #         'http': 'http://' + proxy
@@ -382,13 +381,21 @@ class User:
                 if self.soup == None:
                     self.parser()
                 soup = self.soup
+                repeat = 3
+                while soup.find("div", class_="title-section ellipsis") == None:
+                    if repeat == 0:
+                        return ''
+                    time.sleep(3)
+                    self.parser()
+                    soup = self.soup
+                    repeat -= 1
                 user_id = soup.find("div", class_="title-section ellipsis") \
                     .find("span", class_="name").string.encode("utf-8")
                 self.user_id = user_id
                 if platform.system() == 'Windows':
                     return user_id.decode('utf-8').encode('gbk')
                 else:
-                    return user_id
+                    return user_id.decode('utf-8')
 
     def get_data_id(self):
         """

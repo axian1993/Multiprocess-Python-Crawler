@@ -5,7 +5,7 @@ import numpy as np
 import numpy.linalg as la
 import math
 
-def LCSubsequence(list1, list2, delta = 0):
+def LCSubsequence(list1, list2):
     m = len(list1)
     n = len(list2)
 
@@ -13,14 +13,14 @@ def LCSubsequence(list1, list2, delta = 0):
 
     for row in range(1, m + 1):
         for col in range(1, n + 1):
-            if abs(list1[row - 1] - list2[col - 1]) <= delta:
+            if list1[row - 1] == list2[col - 1]:
                 mat[row][col] = mat[row - 1][col - 1] + 1
             else:
                 mat[row][col] = max(mat[row][col - 1], mat[row - 1][col])
 
     return mat[m][n]
 
-def LCSubstring(list1, list2, delta = 0):
+def LCSubstring(list1, list2):
     m = len(list1)
     n = len(list2)
 
@@ -28,7 +28,7 @@ def LCSubstring(list1, list2, delta = 0):
 
     for row in range(1, m + 1):
         for col in range(1, n + 1):
-            if abs(list1[row - 1] - list2[col - 1]) <= delta:
+            if list1[row - 1] == list2[col - 1]:
                 mat[row][col] = mat[row - 1][col - 1] + 1
 
     max_len = 0
@@ -80,10 +80,11 @@ def derivate_euclid_distance(s, t, smooth = False):
 
 def regular_euclid_distance(s, t):
 
-    dist = sum([abs(a - b)**2 for a,b in zip(s,t)])
-    dist = dist/len(s)
+    dist = sum([(a - b)**2 for a,b in zip(s,t)])
+    #dist = math.sqrt(dist)/len(s)
+    dist = math.sqrt(dist)/math.sqrt(len(s))
 
-    return math.sqrt(dist)
+    return dist
 
 def initialize_dmatrix(rows,cols,window):
     d = np.zeros((rows,cols),dtype='float')
@@ -309,7 +310,9 @@ def cosine(y1, y2, x = 3):
 def main():
     list1 = [3,1]
     list2 = [3,3]
-    print(euclid_distance(list1, list2))
+    list1 = np.array(list1)
+    list2 = np.array(list2)
+    print(regular_euclid_distance(list1, list2))
 
 if __name__ == "__main__":
     main()

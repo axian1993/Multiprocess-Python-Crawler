@@ -72,17 +72,26 @@ def behaviors_cnt():
 
         plt.show()
 
-def show_vec_mat():
-    file_path = 'result/dist_vec_mat/day_series_beta_7.txt'
+# 绘制dist_vec的值的分布
+def dist_vec_distribution():
+    file_path = 'result/dist_vec_mat/month_series_beta_12.txt'
     with open(file_path, 'r') as vec_mat:
         for i in range(5):
             line = vec_mat.readline()
-            line = eval(line)
-            print([line[i] for i in range(5)])
+            line = np.array(eval(line))
+            for j in range(10):
+                plt.clf()
+                num_bins = 30
+                x = np.array(line[j])
+                n, num_bin, patches = plt.hist(x, num_bins, normed = True, color='blue', alpha=0.5)
+                print(n)
+                title = '{0}_{1}'.format(i, j)
+                plt.title(title)
+                plt.show()
 
 
 def main():
-    show_vec_mat()
+    dist_vec_distribution()
 
 if __name__ == '__main__':
     main()

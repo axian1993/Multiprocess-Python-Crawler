@@ -4,7 +4,7 @@ weibo(http://weibo.cn/) crawler by github@qiaoIn
 '''
 
 # Build-in / Std
-import sys,traceback, time
+import sys,traceback, time, re
 
 # requirements
 import requests
@@ -82,8 +82,20 @@ class User:
             self.parser()
         soup = self.soup
 
+        repeat = 3
+        while soup.find("span", class_ = "ctt") == None:
+            if repeat == 0:
+                return ''
+            time.sleep(3)
+            self.parser()
+            soup = self.soup
+            repeat -= 1
         ctt_strings = soup.find("span", class_ = "ctt").strings
         user_name = next(ctt_strings)
+
+        user_name = user_name.replace(u'\xa0', u' ')
+        if user_name.find(' ') != -1:
+            user_name = user_name[:user_name.find(' ')]
 
         return user_name
 
