@@ -1,5 +1,9 @@
 # -*- codStampToSeries8 -*-
 
+# Requirement
+import numpy as np
+from scipy import io as spio
+
 #Built-in/Std
 import time
 import statistics
@@ -34,7 +38,8 @@ class Stamps:
 
     def contiIntervalCnt(self, interval = 1, begin = None, end = None):
         if self.tsl == []:
-            return []
+            list_len = (begin - end) // 3600
+            return [0 for i in range(list_len)]
         else:
             cnt_list = []
             tsl = self.tsl
@@ -57,7 +62,7 @@ class Stamps:
                     current = current - interval
 
                 if index == len(tsl):
-                    while current >= end:
+                    while current > end:
                         cnt_list.append(cnt)
                         cnt = 0
                         current = current - interval
@@ -290,21 +295,22 @@ def normalization(cnt_list):
 
 def main():
     #对离散的时间戳做count
-    # with open("data/zhihu/users.json", 'r') as input, open("data/zhihu/cnt/hour_statistics", "w") as output:
+    # with open("data/zhihu/users.json", 'r') as input, open("data/zhihu/cnt/hour_series", "w") as output:
     #     for line in input:
     #         line = eval(line)
     #
     #         stamp_list = line["activity"]
     #         stamp = Stamps(stamp_list)
-    #         #cnt_list = stamp.contiIntervalCnt(begin = 1458576000, interval = 2592000)
-    #         cnt_list = stamp.fixIntervalCnt('hour')
-    #
+    #         cnt_list = stamp.contiIntervalCnt(begin = 1458576000, end=1250265600, interval = 3600)
+    #         # cnt_list = stamp.fixIntervalCnt('hour')
+    #         if (len(cnt_list) != 57864):
+    #             return 0
     #         out = {}
     #         out['index'] = line['index']
     #         out['count'] = cnt_list
     #         output.write(str(out) + '\n')
 
-    #标准化cnt序列
+    #全局标准化cnt序列
     # rootdir = "data/zhihu/cnt"
     # outputdir = "data/zhihu/norm_cnt"
     # for parent, dirnames, filenames in os.walk(rootdir):
@@ -317,25 +323,47 @@ def main():
     #                 line['count'] = normalization(line['count'])
     #                 output.write(str(line) + '\n')
 
-    options = [[7, 'hour'], [14, 'hour'], [14, 'weekday'], [30, 'hour'], [30, 'weekday']]
-    platforms = ['weibo', 'zhihu']
+    # 将每连续多天映射到一个相同的分布上
+    # options = [[7, 'hour'], [14, 'hour'], [14, 'weekday'], [30, 'hour'], [30, 'weekday']]
+    # platforms = ['weibo', 'zhihu']
+    #
+    # for platform in platforms:
+    #     input_path = 'data/{0}/users.json'.format(platform)
+    #
+    #     for option in options:
+    #         print(platform, option)
+    #         output_path = 'data/{0}/norm_cnt/{1}_days_{2}'.format(platform, option[0], option[1])
+    #
+    #         with open(input_path, 'r') as input_file, open(output_path, 'w') as output_file:
+    #             for line in input_file:
+    #                 line = eval(line)
+    #                 stamp = Stamps(line['activity'])
+    #
+    #                 out = {}
+    #                 out['index'] = line['index']
+    #                 out['series'] = stamp.contiOnFix(option[0], option[1])
+    #                 output_file.write(str(out) + '\n')
+
+    # 局部标准化hour_series序列
+    platforms = ['zhihu', 'weibo']
 
     for platform in platforms:
-        input_path = 'data/{0}/users.json'.format(platform)
+        input_path = 'data/{0}/cnt/hour_series'.format(platform)
+        out_path = 'data/{0}/norm_cnt/hour_series.txt'.format(platform)
 
-        for option in options:
-            print(platform, option)
-            output_path = 'data/{0}/norm_cnt/{1}_days_{2}'.format(platform, option[0], option[1])
+        out_array = np.zeros((1356, 57864))
 
-            with open(input_path, 'r') as input_file, open(output_path, 'w') as output_file:
-                for line in input_file:
-                    line = eval(line)
-                    stamp = Stamps(line['activity'])
+        with open(input_path, 'r') as cnt:
+            for line in cnt:
+                line = eval(line)
+                index = line['index']
+                cnt_list = line['count']
+                for i in range(0, len(cnt_list), 24):
+                    norm_list = normalization(cnt_list[i:i+24])
+                    for j in range(24):
+                        out_array[index][i + j] = norm_list[j]
 
-                    out = {}
-                    out['index'] = line['index']
-                    out['series'] = stamp.contiOnFix(option[0], option[1])
-                    output_file.write(str(out) + '\n')
+        np.savetxt(out_path, out_array)
 
 
 
